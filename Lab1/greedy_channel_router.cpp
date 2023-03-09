@@ -2,10 +2,10 @@
 
 #include <iostream>
 
-GreedyChannelRouter::Node::Node(int _rowId, int _netId):
+GreedyChannelRouter::Node::Node(size_t _rowId, size_t _netId):
     rowId(_rowId), netId(_netId) {}
 
-GreedyChannelRouter::Path::Path(int _sx, int _sy, int _ex, int _ey):
+GreedyChannelRouter::Path::Path(size_t _sx, size_t _sy, size_t _ex, size_t _ey):
     sx(_sx), sy(_sy), ex(_ex), ey(_ey) {}
 
 GreedyChannelRouter::End::End(size_t _col): col(_col), type(0) {}
@@ -13,16 +13,19 @@ GreedyChannelRouter::End::End(size_t _col): col(_col), type(0) {}
 size_t GreedyChannelRouter::route() {
     size_t n = netIds.size();
 
-    netPaths.assign(n, std::vector<Path>{});
     connect.assign(n, std::array<bool,2>{ false, false });
+    netPaths.assign(n, std::vector<Path>{});
 
-    netCols.assign(n, std::vector<End>{});
+    netInfos.clear();
+    netInfos.reserve(n);
     for (size_t c = 0; c < n; c++) {
-        for (int k = 0; k < 2; k++) {
+        for (size_t k = 0; k < 2; k++) {
             auto netId = netIds[c][k];
             if (netId) {
-                if (netCols[netId].empty() or netCols[netId].back().col != c)
-                    netCols[netId].emplace_back(c);
+                auto& netInfo = netInfos[netId];
+                if (netInfo.empty() or netInfo.back().col != c)
+                    netInfo.emplace_back(c);
+                netInfo.back().type |= 1 << k;
             }
         }
     }
@@ -52,7 +55,7 @@ size_t GreedyChannelRouter::route() {
 }
 
 void GreedyChannelRouter::r1(size_t c) {
-    auto impl = [&](int k, int di, int begin, int end) {
+    auto impl = [&](size_t k, size_t di, size_t begin, size_t end) {
         auto netId = netIds[c][k];
         if (netId == 0) {
             connect[c][k] = true;
@@ -75,7 +78,7 @@ void GreedyChannelRouter::r1(size_t c) {
         }
     };
     impl(0,  1, 0, rowEnd.size()-1);
-    impl(1, -1, rowEnd.size()-1, 0);
+    impl(1, (size_t)-1, rowEnd.size()-1, 0);
 }
 
 void GreedyChannelRouter::r2(size_t c) {

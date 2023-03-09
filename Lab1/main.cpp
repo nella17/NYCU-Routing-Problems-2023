@@ -17,22 +17,22 @@ int main(int argc, const char* argv[]) {
     const char* input = argv[1];
     const char* output = argv[2];
 
-    std::vector<std::array<int,2>> netIds{};
-    std::set<int> nets;
+    std::vector<std::array<size_t,2>> netIds{};
+    std::set<size_t> nets;
     {
         std::ifstream is(input);
         std::string line;
         std::getline(is, line);
         std::stringstream ss(line);
-        int x;
+        size_t x;
         while (ss >> x) {
-            netIds.emplace_back(std::array<int,2>{ x, 0 });
+            netIds.emplace_back(std::array<size_t,2>{ x, 0 });
             nets.emplace(x);
         }
         getline(is, line);
         ss.clear();
         ss.str(line);
-        for(int i = 0; ss >> x; i++) {
+        for(size_t i = 0; ss >> x; i++) {
             netIds[i][1] = x;
             nets.emplace(x);
         }

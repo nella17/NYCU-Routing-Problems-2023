@@ -1,22 +1,22 @@
 #pragma once
 
-#include <vector>
 #include <array>
-#include <vector>
 #include <iosfwd>
+#include <unordered_map>
+#include <vector>
 
 class GreedyChannelRouter {
 public:
 
     struct Node {
-        static const int EMPTY = 0;
-        int rowId, netId;
-        Node(int, int = EMPTY);
+        static const size_t EMPTY = 0;
+        size_t rowId, netId;
+        Node(size_t, size_t = EMPTY);
     };
 
     struct Path {
-        int sx, sy, ex, ey;
-        Path(int,int,int,int);
+        size_t sx, sy, ex, ey;
+        Path(size_t, size_t, size_t, size_t);
     };
 
     struct End {
@@ -24,15 +24,26 @@ public:
         End(size_t);
     };
 
-    int ICW, MJL, SNC;
+    enum NetType {
+        Steady = 0,
+        Raising = 1 << 0,
+        Falling = 1 << 1,
+    };
+
+    struct NetInfo: std::vector<End> {
+        NetType type = NetType::Steady;
+    };
+
+    size_t ICW, MJL, SNC;
     size_t route();
 
-    std::vector<std::array<int,2>> netIds;
+    std::vector<std::array<size_t, 2>> netIds;
+    std::vector<std::array<bool, 2>> connect;
     std::vector<std::vector<Path>> netPaths;
-    std::vector<std::vector<End>> netCols;
 
-    std::vector<std::array<bool,2>> connect;
-    int colIdx;
+    std::unordered_map<size_t, NetInfo> netInfos;
+
+    size_t colIdx;
     std::vector<Node> rowEnd;
     std::vector<bool> lastCol;
 
