@@ -2,7 +2,7 @@ CXX ?= g++
 TARGET := Lab1
 SRCDIR := .
 OBJDIR := ./obj
-CXXFLAGS := -std=c++17 -Wall
+CXXFLAGS := -std=c++20 -Wall -Wextra -Wshadow -Wconversion
 RC_FLAGS := -O3
 DC_FLAGS := -g -DDEBUG -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC -D_GLIBCXX_DEBUG_PEDANTIC_ASSERT
 
@@ -16,6 +16,7 @@ endif
 
 SRCS := $(notdir $(wildcard ${SRCDIR}/*.cpp))
 OBJS := $(addprefix $(OBJDIR)/, $(patsubst %.cpp, %.o, $(SRCS)))
+DEPS := $(addprefix $(OBJDIR)/, $(patsubst %.cpp, %.d, $(SRCS)))
 
 $(shell [ -d $(OBJDIR) ] || mkdir -p $(OBJDIR))
 
@@ -23,6 +24,8 @@ all: $(TARGET) $(OBJS)
 
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) $^ -o $@
+
+-include $(DEPS)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -MP -MMD -c $< -o $@
