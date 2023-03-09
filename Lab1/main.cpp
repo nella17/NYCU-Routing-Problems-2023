@@ -1,4 +1,4 @@
-#include "greedy_channel_router.h"
+#include "greedy_channel_router.hpp"
 
 #include <iostream>
 #include <fstream>
