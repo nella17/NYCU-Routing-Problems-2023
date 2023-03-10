@@ -35,7 +35,7 @@ def draw_line(plt, x1 ,y1 ,x2 ,y2 ,color):
         new_y1,new_y2 = y1,y2
     plt.plot([new_x1, new_x2], [new_y1,new_y2], color=color, ls="-", linewidth=2)
 
-def draw_img(top_row, bottom_row, nets_segment, maze_x_range, maze_y_range, title, filename):
+def draw_img(top_row, bottom_row, nets_segment, maze_x_range, maze_y_range, title, filename, show):
     grid_length = 1 
     fig_max_scale = max(6, int(max(maze_x_range[1],maze_y_range[1]) / 10) + 1)
     fig = plt.figure(figsize=(fig_max_scale,fig_max_scale))
@@ -67,13 +67,15 @@ def draw_img(top_row, bottom_row, nets_segment, maze_x_range, maze_y_range, titl
             draw_line(plt,segment[0],segment[1],segment[2],segment[3],net_color)
     plt.gca().set_aspect('equal', adjustable='box')
     plt.savefig(filename, dpi=300)
-    plt.show()
+    if show:
+        plt.show()
 
 if __name__== "__main__" :
     parser = argparse.ArgumentParser()
     parser.add_argument("--in_file",   type=str,  help="input file(testcase) filename")
     parser.add_argument("--out_file",  type=str,  help="output file(routing result) filename")
     parser.add_argument("--img_name",  type=str,  help="image filename")
+    parser.add_argument("--show",      type=bool, help="show result", default=False)
     args = parser.parse_args()
 
     top_row = []
@@ -111,7 +113,7 @@ if __name__== "__main__" :
                     nets_segment[net_name].append([r1,r2,r3,r2])
                 else:
                     raise ValueError("Wrong output format")
-    draw_img(top_row, bottom_row, nets_segment, (min_bound_x, max_bound_x), (min_bound_y, max_bound_y), args.in_file[:-4], args.img_name)
+    draw_img(top_row, bottom_row, nets_segment, (min_bound_x, max_bound_x), (min_bound_y, max_bound_y), args.in_file[:-4], args.img_name, args.show)
 
 
 
