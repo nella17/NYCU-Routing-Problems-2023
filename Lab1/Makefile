@@ -2,8 +2,8 @@ CXX ?= g++
 TARGET := Lab1
 SRCDIR := .
 OBJDIR := ./obj
-CXXFLAGS := -std=c++20 -Wall -Wextra -Wshadow -Wconversion
-RC_FLAGS := -O3
+CXXFLAGS := -std=c++17 -Wall -Wextra -Wshadow -Wconversion
+RC_FLAGS := -Ofast
 DC_FLAGS := -g -DDEBUG -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC -D_GLIBCXX_DEBUG_PEDANTIC_ASSERT
 
 ifeq ($(DEBUG), 1)
