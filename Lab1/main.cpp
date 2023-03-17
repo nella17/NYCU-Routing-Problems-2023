@@ -17,7 +17,7 @@ int main(int argc, const char* argv[]) {
     const char* input = argv[1];
     const char* output = argv[2];
 
-    std::vector<std::array<size_t,2>> netIds{};
+    std::vector<std::array<size_t,2>> netEnds{};
     std::set<size_t> nets;
     {
         std::ifstream is(input);
@@ -26,41 +26,37 @@ int main(int argc, const char* argv[]) {
         std::stringstream ss(line);
         size_t x;
         while (ss >> x) {
-            netIds.emplace_back(std::array<size_t,2>{ x, 0 });
+            netEnds.emplace_back(std::array<size_t,2>{ x, 0 });
             nets.emplace(x);
         }
         getline(is, line);
         ss.clear();
         ss.str(line);
         for(size_t i = 0; ss >> x; i++) {
-            netIds[i][1] = x;
+            netEnds[i][1] = x;
             nets.emplace(x);
         }
         is.close();
     }
 
     GreedyChannelRouter router;
-    router.netIds = netIds;
+    router.netEnds = netEnds;
 
     router.ICW = 2;
-    router.MJL = 2;
+    router.MJL = 1;
     router.SNC = 3;
+
+    // TODO
+    router.ICW = 5;
 
     auto height = router.route();
     std::cerr << "height = " << height << std::endl;
-
-    for (auto id: nets) {
-        std::cerr << "net id = " << id << std::endl;
-        for (auto p: router.netPaths[id])
-            std::cerr << ' ' << p << std::endl;
-        std::cerr << std::endl;
-    }
 
     {
         std::ofstream os(output);
         for (auto id: nets) {
             os << ".begin " << id << '\n';
-            for (auto p: router.netPaths[id])
+            for (auto p: router.netInfos[id].paths)
                 os << p << '\n';
             os << ".end\n";
         }
