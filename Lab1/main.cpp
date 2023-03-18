@@ -72,6 +72,7 @@ int main(int argc, const char* argv[]) {
     {
         std::ofstream os(output);
         for (auto id: nets) {
+            if (ans.second[id].paths.empty()) continue;
             os << ".begin " << id << '\n';
             for (auto p: ans.second[id].paths)
                 os << p << '\n';

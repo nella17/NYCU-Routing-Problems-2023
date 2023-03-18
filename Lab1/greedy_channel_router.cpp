@@ -417,8 +417,8 @@ std::ostream& operator<<(std::ostream& os, const GreedyChannelRouter& r) {
 
 std::ostream& operator<<(std::ostream& os, const GreedyChannelRouter::Path& p) {
     if (p.sx == p.ex)
-        return os << ".V" << ' ' << p.sx << ' ' << p.sy << ' ' << p.ey;
+        return os << ".V" _ p.sx _ std::min(p.sy,p.ey) _ std::max(p.sy,p.ey);
     if (p.sy == p.ey)
-        return os << ".H" << ' ' << p.sx << ' ' << p.sy << ' ' << p.ex;
+        return os << ".H" _ std::min(p.sx,p.ex) _ p.sy _ std::max(p.sx,p.ex);
     __builtin_unreachable();
 }
