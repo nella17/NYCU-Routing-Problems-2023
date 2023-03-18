@@ -43,10 +43,10 @@ int main(int argc, const char* argv[]) {
     router.netEnds = netEnds;
 
     router.ICW = 2;
-    router.MJL = 1;
+    router.MJL = 2;
     router.SNC = 10;
 
-    std::pair<size_t, decltype(router.netInfos)> ans{ 10, {} };
+    std::pair<size_t, decltype(router.netInfos)> ans{ UINT_MAX, {} };
 
     if (ans.first != UINT_MAX) {
         router.ICW = ans.first;

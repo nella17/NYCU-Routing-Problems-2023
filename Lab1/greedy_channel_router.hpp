@@ -74,7 +74,7 @@ public:
 
     struct Score {
         size_t netId, track, length, free, gap;
-        std::vector<std::tuple<size_t, size_t, size_t>> blocks{};
+        std::vector<std::pair<size_t, size_t>> blocks{};
         Score(size_t);
         void emplace(size_t, size_t, size_t);
         void calc(bool, size_t);
@@ -99,7 +99,7 @@ private:
     void fixInfo(NetInfo&);
 
     bool keepNet(size_t);
-    // bool placeNet(size_t, size_t, size_t, size_t);
+    bool placeNet(size_t, size_t, size_t, size_t);
 
     void r1();
     void r2();

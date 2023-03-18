@@ -25,7 +25,7 @@ GreedyChannelRouter::Score::Score(size_t _netId):
     netId(_netId), track(0), length(0), free(0), gap(0), blocks{} {}
 
 void GreedyChannelRouter::Score::emplace(size_t start, size_t end, size_t cnt) {
-    blocks.emplace_back(start, end, cnt);
+    blocks.emplace_back(start, end);
     length += end - start;
     track += cnt;
 }
@@ -34,7 +34,7 @@ void GreedyChannelRouter::Score::calc(bool keep, size_t hei) {
     if (blocks.empty())
         gap = hei;
     else
-        gap = std::min(std::get<0>(blocks.front()), hei - std::get<1>(blocks.back()));
+        gap = std::min(blocks.front().first, hei - blocks.back().second);
 }
 bool GreedyChannelRouter::Score::empty() const {
     return blocks.empty() or free == 0;
@@ -81,7 +81,7 @@ size_t GreedyChannelRouter::route() {
     size_t step = (size_t)-1;
     // TODO
     // std::cin >> step;
-    // step = 10;
+    // step = 6;
 
     for (colIdx = 0; colIdx < width; colIdx++) {
         std::cerr _ "colIdx =" _ colIdx _ height _ std::endl;
@@ -210,6 +210,22 @@ bool GreedyChannelRouter::keepNet(size_t netId) {
     return keepNetIds.count(netId);
 }
 
+bool GreedyChannelRouter::placeNet(size_t netId, size_t start, size_t end, size_t target) {
+    if (start > end) std::swap(start, end);
+    start = std::max(start, 1ul);
+    end = std::min(end, height-2);
+    std::pair<long, size_t> mn{ INT_MAX, UINT_MAX };
+    for (size_t row = start; row <= end; row++)
+        if (rowEnd[row].netId == Node::EMPTY)
+            mn = std::min(mn, std::pair{ std::abs((long)(row - target)), row });
+    auto row = mn.second;
+    if (row == UINT_MAX) return false;
+    std::cerr _ "placeNet" _ netId _ row _ start _ end _ target _ std::endl;
+    rowEnd[row].netId = netId;
+    liveNet[netId].emplace(row);
+    return true;
+}
+
 void GreedyChannelRouter::r1() {
     auto find = [&](size_t begin, size_t end, size_t di) {
         auto netId = rowEnd[begin].netId;
@@ -223,19 +239,23 @@ void GreedyChannelRouter::r1() {
         return end;
     };
 
-    auto put = [&](size_t begin, size_t row) {
+    auto put = [&](size_t begin, size_t row, size_t target = UINT_MAX) {
         auto netId = rowEnd[begin].netId;
         if (netId == Node::EMPTY) {
             rowEnd[begin].lastColUsed = Node::EMPTY_USED;
         } else {
-            useV(netId, colIdx, begin, row);
-            if (keepNet(netId) or liveNet[netId].size() >= 1)
-                rowEnd[row].netId = netId;
+            assert(useV(netId, colIdx, begin, row));
+            if (keepNet(netId) or liveNet[netId].size() >= 1) {
+                if (target == UINT_MAX) target = row;
+                if (rowEnd[row].netId != netId)
+                    assert(placeNet(netId, begin, row, target));
+            }
         }
     };
 
     if (rowEnd.front().netId == rowEnd.back().netId) {
-        put(0, height-1);
+        auto netId = rowEnd.front().netId;
+        put(0, height-1, keepNet(netId) ? nt2e(netInfos[netId].type) : height / 2);
     } else {
         auto mT = find(0, height-1, 1);
         auto mB = find(height-1, 0, (size_t)-1);
@@ -296,22 +316,12 @@ void GreedyChannelRouter::r2() {
             auto netId = score.netId;
             bool kn = keepNet(netId);
             bool keep = kn or score.blocks.size() > 1;
-            size_t end = kn ? nt2e(netInfos[netId].type) : height / 2;
+            size_t target = kn ? nt2e(netInfos[netId].type) : (score.blocks.front().first + score.blocks.back().second) / 2;
             std::cerr _ netId _ score.blocks.size() _ keep _ std::endl;
-            for (auto [s,e,c]: score.blocks) {
-                std::cerr _ s <<','<< e <<','<< c; std::cerr _ std::endl << rowEnd;
+            for (auto [s,e]: score.blocks) {
+                std::cerr _ s <<','<< e; std::cerr _ std::endl << rowEnd;
                 assert(useV(netId, colIdx, s, e));
-                if (keep) {
-                    std::pair<long, size_t> mn{ INT_MAX, UINT_MAX };
-                    assert(s <= e);
-                    for (size_t i = s; i <= e; i++)
-                        mn = std::min(mn, std::pair{ std::abs((long)(i - end)), i });
-                    std::cerr _ mn.first _ mn.second _ std::endl;
-                    auto row = mn.second;
-                    assert(row != UINT_MAX);
-                    rowEnd[row].netId = netId;
-                    liveNet[netId].emplace(row);
-                }
+                if (keep) assert(placeNet(netId, s, e, target));
             }
         }
     } while (modify);
