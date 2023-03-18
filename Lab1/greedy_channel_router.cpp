@@ -245,10 +245,16 @@ void GreedyChannelRouter::r1() {
             rowEnd[begin].lastColUsed = Node::EMPTY_USED;
         } else {
             assert(useV(netId, colIdx, begin, row));
+            if (rowEnd[row].netId == netId) return;
             if (keepNet(netId) or liveNet[netId].size() >= 1) {
                 if (target == UINT_MAX) target = row;
-                if (rowEnd[row].netId != netId)
-                    assert(placeNet(netId, begin, row, target));
+                if (!placeNet(netId, begin, row, target)) {
+                    assert(false);
+                    // auto m = height / 2;
+                    // rowEnd.insert(rowEnd.begin() + (long)m, Node(height++));
+                    // rowEnd[m].netId = netId;
+                    // liveNet[netId].emplace(m);
+                }
             }
         }
     };

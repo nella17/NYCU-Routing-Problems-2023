@@ -1,11 +1,9 @@
 #pragma once
 
-// #undef DEBUG
-#define DEBUG 1
 #if DEBUG
 #include <cassert>
 #else
-#define assert(x) (x)
+#define assert(x) ((x) ? 0 : throw 1)
 #endif
 
 #define _ <<' '<<

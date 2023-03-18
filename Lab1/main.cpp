@@ -7,12 +7,17 @@
 #include <set>
 #include <string>
 #include <sstream>
+#include <unistd.h>
 
 int main(int argc, const char* argv[]) {
     if (argc != 3) {
         printf("Usage: %s [input.txt] [output.txt]\n", argv[0]);
         return -1;
     }
+
+#ifndef DEBUG
+    close(2);
+#endif
 
     const char* input = argv[1];
     const char* output = argv[2];
@@ -42,7 +47,6 @@ int main(int argc, const char* argv[]) {
     GreedyChannelRouter router;
     router.netEnds = netEnds;
 
-    router.ICW = 2;
     router.MJL = 2;
     router.SNC = 10;
 
@@ -58,13 +62,18 @@ int main(int argc, const char* argv[]) {
     } else {
         for (size_t h = 3; h <= ans.first; h++) {
             router.ICW = h;
-            auto height = router.route();
-            std::cout << "height = " << height << std::endl;
-            if (height < ans.first) {
-                ans = {
-                    height,
-                    router.netInfos
-                };
+            // router.MJL = std::max(1lu, h / 4);
+            try {
+                auto height = router.route();
+                std::cout << "height = " << height << std::endl;
+                if (height < ans.first) {
+                    ans = {
+                        height,
+                        router.netInfos
+                    };
+                }
+            } catch (...) {
+                std::cout << "h = " << h << " failed" << std::endl;
             }
         }
     }
