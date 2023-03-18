@@ -8,6 +8,14 @@
 GreedyChannelRouter::Node::Node(size_t _rowId, size_t _netId):
     lastColUsed(EMPTY), rowId(_rowId), netId(_netId), nextNetId(EMPTY) {}
 
+std::ostream& operator<<(std::ostream& os, const std::vector<GreedyChannelRouter::Node>& rowEnd) {
+    std::cerr _ "rowEnd" _ std::endl;
+    std::cerr _ "rowId"; for (auto &n: rowEnd) std::cerr _ n.rowId; std::cerr _ std::endl;
+    std::cerr _ "lastC"; for (auto &n: rowEnd) std::cerr _ n.lastColUsed; std::cerr _ std::endl;
+    std::cerr _ "netId"; for (auto &n: rowEnd) std::cerr _ n.netId; std::cerr _ std::endl;
+    return os;
+}
+
 GreedyChannelRouter::Path::Path(size_t _sx, size_t _sy, size_t _ex, size_t _ey):
     sx(_sx), sy(_sy), ex(_ex), ey(_ey) {}
 
@@ -16,9 +24,17 @@ GreedyChannelRouter::End::End(size_t _col): col(_col), type(0) {}
 GreedyChannelRouter::Score::Score(size_t _netId):
     netId(_netId), track(0), length(0), free(0), gap(0), blocks{} {}
 
+void GreedyChannelRouter::Score::emplace(size_t start, size_t end, size_t cnt) {
+    blocks.emplace_back(start, end, cnt);
+    length += end - start;
+    track += cnt;
+}
 void GreedyChannelRouter::Score::calc(bool keep, size_t hei) {
     free = track - blocks.size() * (keep ? 1 : 0);
-    gap = std::min(std::get<0>(blocks.front()), hei - std::get<1>(blocks.back()));
+    if (blocks.empty())
+        gap = hei;
+    else
+        gap = std::min(std::get<0>(blocks.front()), hei - std::get<1>(blocks.back()));
 }
 bool GreedyChannelRouter::Score::empty() const {
     return blocks.empty() or free == 0;
@@ -65,7 +81,7 @@ size_t GreedyChannelRouter::route() {
     size_t step = (size_t)-1;
     // TODO
     // std::cin >> step;
-    // step = 9;
+    // step = 10;
 
     for (colIdx = 0; colIdx < width; colIdx++) {
         std::cerr _ "colIdx =" _ colIdx _ height _ std::endl;
@@ -74,8 +90,10 @@ size_t GreedyChannelRouter::route() {
 
         rowEnd.front().nextNetId = netEnds[colIdx][0];
         rowEnd.back().nextNetId  = netEnds[colIdx][1];
+        liveNet.clear();
 
-        for (auto &n: rowEnd) {
+        for (size_t row = 0; row < height; row++) {
+            auto& n = rowEnd[row];
             if (n.netId == n.nextNetId and n.netId != Node::EMPTY) {
                 netInfos[n.netId].paths.emplace_back(
                     colIdx-1, n.rowId,
@@ -85,10 +103,9 @@ size_t GreedyChannelRouter::route() {
 
             n.netId = n.nextNetId;
             n.lastColUsed = Node::EMPTY;
+            if (n.netId != Node::EMPTY)
+                liveNet[n.netId].emplace(row);
         }
-
-        std::cerr _ "rowEnd.netId"; for (auto &n: rowEnd) std::cerr _ n.netId; std::cerr _ std::endl;
-        std::cerr _ "rowEnd.rowId"; for (auto &n: rowEnd) std::cerr _ n.rowId; std::cerr _ std::endl;
 
         for (auto& [netId,info]: netInfos)
             if (info.next() == colIdx) {
@@ -104,6 +121,7 @@ size_t GreedyChannelRouter::route() {
                     keepNetIds.emplace(netId);
             }
 
+        std::cerr << rowEnd;
         std::cerr _ "keepNetIds";
         for (auto x: keepNetIds)
             std::cerr _ x;
@@ -136,8 +154,8 @@ bool GreedyChannelRouter::useV(size_t netId, size_t col, size_t begin, size_t en
     std::cerr _ "useV" _ netId _ col _ begin _ end _ std::endl;
     if (begin == end) return false;
     if (begin > end) std::swap(begin, end);
-    for (size_t i = begin; i <= end; i++)
-        if (!rowEnd[i].empty(netId))
+    for (size_t row = begin; row <= end; row++)
+        if (!rowEnd[row].empty(netId))
             return false;
     bool bT = rowEnd[begin].netId == netId, bF = rowEnd[begin].netId == Node::EMPTY, bb = bT | bF;
     bool eT = rowEnd[ end ].netId == netId, eF = rowEnd[ end ].netId == Node::EMPTY, ee = eT | eF;
@@ -148,14 +166,23 @@ bool GreedyChannelRouter::useV(size_t netId, size_t col, size_t begin, size_t en
         col, rowEnd[begin].rowId,
         col, rowEnd[end].rowId
     );
-    for (size_t i = begin; i <= end; i++) {
-        auto& e = rowEnd[i];
-        e.lastColUsed = netId;
-        if (e.netId == netId)
-            e.netId = Node::EMPTY;
+    for (size_t row = begin; row <= end; row++) {
+        auto& n = rowEnd[row];
+        n.lastColUsed = netId;
+        if (n.netId == netId) {
+            n.netId = Node::EMPTY;
+            liveNet[netId].erase(row);
+        }
     }
-    std::cerr _ "rowEnd.lastC"; for (auto &n: rowEnd) std::cerr _ n.lastColUsed; std::cerr _ std::endl;
-    std::cerr _ "rowEnd.netId"; for (auto &n: rowEnd) std::cerr _ n.netId; std::cerr _ std::endl;
+    if (bT and !eT) {
+        rowEnd[ end ].netId = netId;
+        liveNet[netId].emplace( end );
+    }
+    if (!bT and eT) {
+        rowEnd[begin].netId = netId;
+        liveNet[netId].emplace(begin);
+    }
+    std::cerr << rowEnd;
     return true;
 }
 
@@ -182,9 +209,6 @@ void GreedyChannelRouter::fixInfo(NetInfo& info) {
 bool GreedyChannelRouter::keepNet(size_t netId) {
     return keepNetIds.count(netId);
 }
-bool GreedyChannelRouter::splitNet(size_t netId) {
-    return !liveNet[netId].empty();
-}
 
 void GreedyChannelRouter::r1() {
     auto find = [&](size_t begin, size_t end, size_t di) {
@@ -205,14 +229,13 @@ void GreedyChannelRouter::r1() {
             rowEnd[begin].lastColUsed = Node::EMPTY_USED;
         } else {
             useV(netId, colIdx, begin, row);
-            if (keepNet(netId))
+            if (keepNet(netId) or liveNet[netId].size() >= 1)
                 rowEnd[row].netId = netId;
         }
     };
 
     if (rowEnd.front().netId == rowEnd.back().netId) {
-        auto netId = rowEnd.front().netId;
-        assert(useV(netId, colIdx, 0, height-1));
+        put(0, height-1);
     } else {
         auto mT = find(0, height-1, 1);
         auto mB = find(height-1, 0, (size_t)-1);
@@ -233,48 +256,63 @@ void GreedyChannelRouter::r1() {
 }
 
 void GreedyChannelRouter::r2() {
-    std::map<size_t, std::vector<size_t>> netCols{};
-    for(size_t row = 1; row < height-1; row++) {
-        auto netId = rowEnd[row].netId ;
-        if (netId) netCols[netId].emplace_back(row);
-    }
     bool modify = false;
     do {
         modify = false;
         std::vector<Score> scores{};
-        for (auto& [netId, netCol]: netCols) {
-            size_t sz = netCol.size();
+        std::cerr _ "liveNet" _ std::endl;
+        for (auto& [netId, netSet]: liveNet) {
+            std::cerr _ netId _ ':';
+            for (auto x: netSet) std::cerr _ x;
+            std::cerr _ std::endl;
+        }
+        for (auto& [netId, netSet]: liveNet) {
+            size_t sz = netSet.size();
             if (sz < 2) continue;
             Score score(netId);
-            for (size_t row = 1, start = 0, cnt = 0; row <= height-1; row++) {
-                if (row == height-1 or !rowEnd[row].empty(netId)) {
-                    if (start != 0) {
-                        score.blocks.emplace_back(start, row-1, cnt);
-                        score.length += row - start;
-                        start = cnt = 0;
-                    }
-                } else {
-                    if (rowEnd[row].netId == netId) {
-                        cnt++;
-                        score.track++;
-                        if (start == 0)
-                            start = row;
-                    }
+            std::vector<size_t> netRow(ALL(netSet));
+            for (size_t i = 0; i < sz; i++) {
+                size_t j = i+1;
+                size_t row = netRow[i];
+                while (j < sz and row < height-1 and rowEnd[row].empty(netId)) {
+                    if (netRow[j] == row) j++;
+                    row++;
+                }
+                if (i < --j) {
+                    score.emplace(netRow[i], netRow[j], j-i+1);
+                    i = j;
                 }
             }
-            score.calc(keepNet(netId), height);
+            bool keep = keepNet(netId) or score.blocks.size() > 1;
+            score.calc(keep, height);
+            std::cerr _ netId _ score.track _ score.blocks.size() _ score.length _ score.gap _ std::endl;
             if (score.empty()) continue;
             scores.emplace_back(score);
-            std::cerr _ netId _ score.track _ score.blocks.size() _ score.length _ score.gap _ std::endl;
         }
         std::sort(ALL(scores));
         if (!scores.empty()) {
+            modify = true;
             auto& score = scores[0];
             auto netId = score.netId;
-            std::cerr _ netId _ score.blocks.size() _ std::endl;
-            for (auto [s,e,c]: score.blocks) std::cerr _ s <<','<< e <<','<< c; std::cerr _ std::endl;
-            for (auto [s,e,c]: score.blocks)
-                useV(netId, colIdx, s, e);
+            bool kn = keepNet(netId);
+            bool keep = kn or score.blocks.size() > 1;
+            size_t end = kn ? nt2e(netInfos[netId].type) : height / 2;
+            std::cerr _ netId _ score.blocks.size() _ keep _ std::endl;
+            for (auto [s,e,c]: score.blocks) {
+                std::cerr _ s <<','<< e <<','<< c; std::cerr _ std::endl << rowEnd;
+                assert(useV(netId, colIdx, s, e));
+                if (keep) {
+                    std::pair<long, size_t> mn{ INT_MAX, UINT_MAX };
+                    assert(s <= e);
+                    for (size_t i = s; i <= e; i++)
+                        mn = std::min(mn, std::pair{ std::abs((long)(i - end)), i });
+                    std::cerr _ mn.first _ mn.second _ std::endl;
+                    auto row = mn.second;
+                    assert(row != UINT_MAX);
+                    rowEnd[row].netId = netId;
+                    liveNet[netId].emplace(row);
+                }
+            }
         }
     } while (modify);
 }
@@ -301,21 +339,8 @@ void GreedyChannelRouter::r4() {
 
     std::sort(ALL(v));
     for (auto [col, type, netId]: v) {
-        size_t d = 0, end = 0;
-        switch (type) {
-            case NetType::Falling:
-                d = 1;
-                end = height-1;
-                break;
-            case NetType::Raising:
-                d = (size_t)-1;
-                end = 0;
-                break;
-            case NetType::Steady:
-                continue;
-            default:
-                __builtin_unreachable();
-        }
+        size_t d = nt2d(type), end = nt2e(type);
+        if (d == 0) continue;
         for (size_t i = 1; i < height-1; i++)
             if (rowEnd[i].netId == netId and rowEnd[i].empty(netId)) {
                 size_t j = i;
@@ -341,14 +366,13 @@ void GreedyChannelRouter::r5() {
             row += di;
         if (begin > row) begin++;
         row += offset;
-        std::cerr _ "rowEnd.rowId"; for (auto &n: rowEnd) std::cerr _ n.rowId; std::cerr _ std::endl;
+        std::cerr << rowEnd;
         rowEnd.insert(rowEnd.begin() + (long)row, Node(height++));
-        std::cerr _ "rowEnd.rowId"; for (auto &n: rowEnd) std::cerr _ n.rowId; std::cerr _ std::endl;
-        std::cerr _ "rowEnd.lastC"; for (auto &n: rowEnd) std::cerr _ n.lastColUsed; std::cerr _ std::endl;
-        std::cerr _ "rowEnd.netId"; for (auto &n: rowEnd) std::cerr _ n.netId; std::cerr _ std::endl;
+        std::cerr << rowEnd;
         std::cerr _ "insert" _ row _ height _ std::endl;
         assert(useV(netId, colIdx, begin, row));
         rowEnd[row].netId = netId;
+        liveNet[netId].emplace(row);
     };
     impl(0, 1 + height / 2, 1);
     impl(height-1, height / 2, (size_t)-1, 1);

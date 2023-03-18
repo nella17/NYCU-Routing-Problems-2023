@@ -44,19 +44,36 @@ int main(int argc, const char* argv[]) {
 
     router.ICW = 2;
     router.MJL = 1;
-    router.SNC = 3;
+    router.SNC = 10;
 
-    // TODO
-    router.ICW = 5;
+    std::pair<size_t, decltype(router.netInfos)> ans{ 10, {} };
 
-    auto height = router.route();
-    std::cerr << "height = " << height << std::endl;
+    if (ans.first != UINT_MAX) {
+        router.ICW = ans.first;
+        auto height = router.route();
+        ans = {
+            height,
+            router.netInfos
+        };
+    } else {
+        for (size_t h = 3; h <= ans.first; h++) {
+            router.ICW = h;
+            auto height = router.route();
+            std::cout << "height = " << height << std::endl;
+            if (height < ans.first) {
+                ans = {
+                    height,
+                    router.netInfos
+                };
+            }
+        }
+    }
 
     {
         std::ofstream os(output);
         for (auto id: nets) {
             os << ".begin " << id << '\n';
-            for (auto p: router.netInfos[id].paths)
+            for (auto p: ans.second[id].paths)
                 os << p << '\n';
             os << ".end\n";
         }

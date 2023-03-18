@@ -38,6 +38,31 @@ public:
         Falling = 1 << 1,
     };
 
+    inline size_t nt2d(NetType type) {
+        switch (type) {
+            case NetType::Falling:
+                return 1;
+            case NetType::Raising:
+                return (size_t)-1;
+            case NetType::Steady:
+                return 0;
+            default:
+                __builtin_unreachable();
+        }
+    }
+    inline size_t nt2e(NetType type) {
+        switch (type) {
+            case NetType::Falling:
+                return height - 1;
+            case NetType::Raising:
+                return 0;
+            case NetType::Steady:
+                return height / 2;
+            default:
+                __builtin_unreachable();
+        }
+    }
+
     struct NetInfo {
         NetType type = NetType::Steady;
         std::vector<Path> paths{};
@@ -51,6 +76,7 @@ public:
         size_t netId, track, length, free, gap;
         std::vector<std::tuple<size_t, size_t, size_t>> blocks{};
         Score(size_t);
+        void emplace(size_t, size_t, size_t);
         void calc(bool, size_t);
         bool empty() const;
         bool operator<(const Score&) const;
@@ -73,7 +99,7 @@ private:
     void fixInfo(NetInfo&);
 
     bool keepNet(size_t);
-    bool splitNet(size_t);
+    // bool placeNet(size_t, size_t, size_t, size_t);
 
     void r1();
     void r2();

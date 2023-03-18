@@ -1,8 +1,9 @@
 #!/bin/bash
 set -eux
+case=${1:-case1}
 CXX=g++-12 make -j DEBUG=1
-./Lab1 ./testbench/case1.txt ./output/case1.txt
+./Lab1 "./testbench/$case.txt" "./output/$case.txt"
 python ./plotter.py \
-  --in_file ./testbench/case1.txt \
-  --out_file ./output/case1.txt \
-  --img_name ./output/case1.png
+  --in_file "./testbench/$case.txt" \
+  --out_file "./output/$case.txt" \
+  --img_name "./output/$case.png"
