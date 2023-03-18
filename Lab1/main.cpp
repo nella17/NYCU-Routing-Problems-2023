@@ -48,9 +48,9 @@ int main(int argc, const char* argv[]) {
     router.netEnds = netEnds;
 
     router.MJL = 2;
-    router.SNC = 10;
+    router.SNC = 15;
 
-    std::pair<size_t, decltype(router.netInfos)> ans{ UINT_MAX, {} };
+    std::pair<size_t, decltype(router.netInfos)> ans{ 18, {} };
 
     if (ans.first != UINT_MAX) {
         router.ICW = ans.first;
@@ -65,7 +65,7 @@ int main(int argc, const char* argv[]) {
             // router.MJL = std::max(1lu, h / 4);
             try {
                 auto height = router.route();
-                std::cout << "height = " << height << std::endl;
+                std::cout << "h = " << h << " height = " << height << std::endl;
                 if (height < ans.first) {
                     ans = {
                         height,
