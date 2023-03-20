@@ -58,9 +58,10 @@ int main(int argc, const char* argv[]) {
         if (!finish) throw "route failed";
         ans = router;
     } else {
+        size_t mx_SNC = std::min(20ul, netEnds.size());
         for (size_t h = 3; h <= ans.height; h++)
             for (size_t mjl = 1; mjl <= 5; mjl++)
-                for (size_t snc = 1; snc <= 20; snc++)
+                for (size_t snc = 1; snc <= mx_SNC; snc++)
         {
             router.ICW = h;
             router.MJL = mjl;
@@ -74,6 +75,7 @@ int main(int argc, const char* argv[]) {
                     ans = router;
                 }
             } catch (...) {
+                // std::getchar();
                 // std::cout << "h = " << h << " failed" << std::endl;
             }
         }

@@ -153,6 +153,7 @@ bool GreedyChannelRouter::route() {
         // std::cerr << *this << std::endl;
     }
 
+    std::cerr << rowEnd;
     bool extra = false;
     for (auto &n: rowEnd)
         if (n.nextNetId != Node::EMPTY) {
