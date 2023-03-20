@@ -44,46 +44,49 @@ int main(int argc, const char* argv[]) {
         is.close();
     }
 
-    GreedyChannelRouter router;
+    GreedyChannelRouter router, ans;
+
+    router.via_cost = 5;
     router.netEnds = netEnds;
 
-    router.MJL = 2;
-    router.SNC = 15;
+    router.ICW = 14;
+    router.MJL = 3;
+    router.SNC = 9;
 
-    std::pair<size_t, decltype(router.netInfos)> ans{ 18, {} };
-
-    if (ans.first != UINT_MAX) {
-        router.ICW = ans.first;
-        auto height = router.route();
-        ans = {
-            height,
-            router.netInfos
-        };
+    if (router.ICW != UINT_MAX) {
+        auto finish = router.route();
+        if (!finish) throw "route failed";
+        ans = router;
     } else {
-        for (size_t h = 3; h <= ans.first; h++) {
+        for (size_t h = 3; h <= ans.height; h++)
+            for (size_t mjl = 1; mjl <= 5; mjl++)
+                for (size_t snc = 1; snc <= 20; snc++)
+        {
             router.ICW = h;
+            router.MJL = mjl;
             // router.MJL = std::max(1lu, h / 4);
+            router.SNC = snc;
             try {
-                auto height = router.route();
-                std::cout << "h = " << h << " height = " << height << std::endl;
-                if (height < ans.first) {
-                    ans = {
-                        height,
-                        router.netInfos
-                    };
+                auto finish = router.route();
+                if (!finish) throw "route failed";
+                if (router < ans) {
+                    std::cout << router << std::endl;
+                    ans = router;
                 }
             } catch (...) {
-                std::cout << "h = " << h << " failed" << std::endl;
+                // std::cout << "h = " << h << " failed" << std::endl;
             }
         }
+        if (ans.ICW == UINT_MAX) throw "route failed";
     }
+
+    std::cout << ans;
 
     {
         std::ofstream os(output);
-        for (auto id: nets) {
-            if (ans.second[id].paths.empty()) continue;
-            os << ".begin " << id << '\n';
-            for (auto p: ans.second[id].paths)
+        for (auto& [netId, info]: ans.netInfos) if (!info.paths.empty()) {
+            os << ".begin " << netId << '\n';
+            for (auto p: info.paths)
                 os << p << '\n';
             os << ".end\n";
         }

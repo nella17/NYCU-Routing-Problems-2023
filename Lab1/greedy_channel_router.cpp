@@ -19,6 +19,10 @@ std::ostream& operator<<(std::ostream& os, const std::vector<GreedyChannelRouter
 GreedyChannelRouter::Path::Path(size_t _sx, size_t _sy, size_t _ex, size_t _ey):
     sx(_sx), sy(_sy), ex(_ex), ey(_ey) {}
 
+size_t GreedyChannelRouter::Path::length() {
+    return ex - sx + ey - sy;
+}
+
 GreedyChannelRouter::End::End(size_t _col): col(_col), type(0) {}
 
 GreedyChannelRouter::Score::Score(size_t _netId):
@@ -51,7 +55,20 @@ bool GreedyChannelRouter::Score::operator<(const Score& s) const {
     return netId < s.netId;
 }
 
-size_t GreedyChannelRouter::route() {
+bool GreedyChannelRouter::operator<(const GreedyChannelRouter& r) const {
+    if (height != r.height)
+        return height < r.height;
+    if (cost != r.cost)
+        return cost < r.cost;
+    if (via_used != r.via_used)
+        return via_used < r.via_used;
+    return ICW < r.ICW;
+}
+
+bool GreedyChannelRouter::route() {
+    if (ICW == UINT_MAX or MJL == UINT_MAX or SNC == UINT_MAX)
+        return false;
+
     width = netEnds.size();
 
     netInfos.clear();
@@ -73,7 +90,7 @@ size_t GreedyChannelRouter::route() {
         fixInfo(info);
 
     rowEnd.clear();
-    rowEnd.reserve(height);
+    rowEnd.reserve(ICW+2);
     height = 0;
     while (height < ICW+2)
         rowEnd.emplace_back(height++);
@@ -136,18 +153,52 @@ size_t GreedyChannelRouter::route() {
         // std::cerr << *this << std::endl;
     }
 
+    bool extra = false;
+    for (auto &n: rowEnd)
+        if (n.nextNetId != Node::EMPTY) {
+            extra = true;
+            break;
+        }
+
+    if (extra) {
+        // TODO: split-over
+        return false;
+    }
+
     std::vector<size_t> rowIdMap(height);
     for (size_t i = 0; i < height; i++) {
         rowIdMap[ rowEnd[i].rowId ] = height - 1 - i;
         // std::cerr _ rowEnd[i].rowId _ "->" _ height-1-i _ std::endl;
     }
-    for (auto& [netId, info]: netInfos)
+
+    wire_length = via_used = 0;
+
+    for (auto& [netId, info]: netInfos) {
+        std::map<std::pair<size_t, size_t>, size_t> cnt{};
         for (auto &p: info.paths) {
             p.sy = rowIdMap[ p.sy ];
             p.ey = rowIdMap[ p.ey ];
+            if (p.sy > p.ey) std::swap(p.sy, p.ey);
+            // size_t nsy = rowIdMap[ p.sy ];
+            // size_t ney = rowIdMap[ p.ey ];
+            // p.sx = std::min(nsy, ney);
+            // p.ex = std::max(nsy, ney);
+            wire_length += p.length();
+            if (p.sx == p.ex)
+                for (size_t y = p.sy; y <= p.ey; y++)
+                    cnt[{ p.sx, y }] |= 1;
+            if (p.sy == p.ey)
+                for (size_t x = p.sx; x <= p.ex; x++)
+                    cnt[{ x, p.sy }] |= 2;
         }
+        for (auto [p, c]: cnt)
+            if (c == 3)
+                via_used++;
+    }
 
-    return height - 2;
+    cost = wire_length + via_used * via_cost;
+
+    return true;
 }
 
 bool GreedyChannelRouter::useV(size_t netId, size_t col, size_t begin, size_t end) {
@@ -410,20 +461,28 @@ const GreedyChannelRouter::RuleMap GreedyChannelRouter::rules{
 };
 
 std::ostream& operator<<(std::ostream& os, const GreedyChannelRouter& r) {
-    for (auto& [netId, info]: r.netInfos) if (!info.paths.empty()) {
-        os << "netId = " << netId << std::endl;
-        for (auto p: info.paths)
-            if (p.sx == p.ex)
-                std::cerr << ' ' << p << std::endl;
-        os << std::endl;
-    }
+    os << "height = " << r.height << std::endl
+        << "ICW = " << r.ICW << std::endl
+        << "MJL = " << r.MJL << std::endl
+        << "SNC = " << r.SNC << std::endl
+        << "wire_length = " << r.wire_length << std::endl
+        << "via_used = " << r.via_used << std::endl
+        << "cost = " << r.cost << std::endl;
+    if (0)
+        for (auto& [netId, info]: r.netInfos) if (!info.paths.empty()) {
+            os << "netId = " << netId << std::endl;
+            for (auto p: info.paths)
+                if (p.sx == p.ex)
+                    std::cerr << ' ' << p << std::endl;
+            os << std::endl;
+        }
     return os;
 }
 
 std::ostream& operator<<(std::ostream& os, const GreedyChannelRouter::Path& p) {
     if (p.sx == p.ex)
-        return os << ".V" _ p.sx _ std::min(p.sy,p.ey) _ std::max(p.sy,p.ey);
+        return os << ".V" _ p.sx _ p.sy _ p.ey;
     if (p.sy == p.ey)
-        return os << ".H" _ std::min(p.sx,p.ex) _ p.sy _ std::max(p.sx,p.ex);
+        return os << ".H" _ p.sx _ p.sy _ p.ex;
     __builtin_unreachable();
 }

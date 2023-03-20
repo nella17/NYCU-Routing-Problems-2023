@@ -25,6 +25,7 @@ public:
     struct Path {
         size_t sx, sy, ex, ey;
         Path(size_t, size_t, size_t, size_t);
+        size_t length();
     };
 
     struct End {
@@ -82,8 +83,11 @@ public:
         bool operator<(const Score&) const;
     };
 
-    size_t ICW, MJL, SNC;
-    size_t route();
+    size_t via_cost, wire_length, via_used, cost = UINT_MAX;
+    bool operator<(const GreedyChannelRouter&) const;
+
+    size_t ICW = UINT_MAX, MJL = UINT_MAX, SNC = UINT_MAX;
+    bool route();
 
     std::vector<std::array<size_t, 2>> netEnds;
 
@@ -91,9 +95,8 @@ public:
     std::map<size_t, std::set<size_t>> liveNet; // net -> tracks
     std::set<size_t> keepNetIds;
 
-    size_t width, height, colIdx;
+    size_t width, height = UINT_MAX, colIdx;
     std::vector<Node> rowEnd;
-
 private:
     bool useV(size_t, size_t, size_t, size_t);
     void fixInfo(NetInfo&);
