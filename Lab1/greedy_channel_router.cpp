@@ -337,13 +337,8 @@ void GreedyChannelRouter::r3() {
 }
 
 void GreedyChannelRouter::r4() {
-    std::vector<size_t> netIds{};
-    for (auto &n: rowEnd) netIds.emplace_back(n.netId);
-    std::sort(ALL(netIds));
-    netIds.resize((size_t)(std::unique(ALL(netIds)) - netIds.begin()));
-
     std::vector<std::tuple<size_t, NetType, size_t>> v{};
-    for (auto netId: netIds) {
+    for (auto& [netId, netSet]: liveNet) {
         auto& info = netInfos[netId];
         if (info.ends.empty()) continue;
         v.emplace_back(
@@ -365,7 +360,7 @@ void GreedyChannelRouter::r4() {
                 while (j != i and rowEnd[j].netId != Node::EMPTY)
                     j -= d;
                 // std::cerr _ netId _ col _ type _ i _ j _ std::endl;
-                if (j-i >= MJL) {
+                if ((j-i)*d >= MJL) {
                     assert(useV(netId, colIdx, i, j));
                 }
             }
