@@ -41,7 +41,38 @@ int main(int argc, const char* argv[]) {
             netEnds[i][1] = x;
             nets.emplace(x);
         }
+        nets.erase(0);
         is.close();
+    }
+
+    size_t density = 0;
+    {
+        std::vector<size_t> begin(nets.size()+1, netEnds.size()), end(nets.size()+1, 0);
+        for (size_t i = 0; i < netEnds.size(); i++) {
+            for (auto x: netEnds[i]) {
+                begin[x] = std::min(begin[x], i);
+                 end [x] = std::max( end [x], i);
+            }
+        }
+        std::vector<size_t> cnt(netEnds.size()+1, 0);
+        for (size_t i = 1; i <= nets.size(); i++) {
+            cnt[begin[i]]++;
+            cnt[end[i]+1]--;
+        }
+        size_t cur = 0;
+        std::vector<size_t> mxid{};
+        for (size_t i = 0; i <= netEnds.size(); i++) {
+            cur += cnt[i];
+            if (cur > density) {
+                density = cur;
+                mxid.clear();
+            }
+            if (cur == density)
+                mxid.emplace_back(i);
+        }
+        std::cout << "density = " << density << " @ ";
+        for (auto i: mxid) std::cout << i << ' ';
+        std::cout << std::endl;
     }
 
     GreedyChannelRouter router, ans;
@@ -59,8 +90,8 @@ int main(int argc, const char* argv[]) {
         ans = router;
     } else {
         size_t mx_SNC = std::min(20ul, netEnds.size());
-        for (size_t h = 3; h <= ans.height; h++)
-            for (size_t mjl = 1; mjl <= 5; mjl++)
+        for (size_t h = density - std::min(density, 10lu); h <= ans.height; h++)
+            for (size_t mjl = 1; mjl <= h / 2; mjl++)
                 for (size_t snc = 1; snc <= mx_SNC; snc++)
         {
             router.ICW = h;
@@ -86,9 +117,9 @@ int main(int argc, const char* argv[]) {
 
     {
         std::ofstream os(output);
-        for (auto& [netId, info]: ans.netInfos) if (!info.paths.empty()) {
+        for (auto netId: nets) {
             os << ".begin " << netId << '\n';
-            for (auto p: info.paths)
+            for (auto p: ans.netInfos[netId].paths)
                 os << p << '\n';
             os << ".end\n";
         }
