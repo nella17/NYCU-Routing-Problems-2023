@@ -337,11 +337,12 @@ void GreedyChannelRouter::r3() {
 }
 
 void GreedyChannelRouter::r4() {
-    std::vector<std::tuple<size_t, NetType, size_t>> v{};
+    std::vector<std::tuple<bool, size_t, NetType, size_t>> v{};
     for (auto& [netId, netSet]: liveNet) {
         auto& info = netInfos[netId];
         if (info.ends.empty()) continue;
         v.emplace_back(
+            info.type == NetType::Steady,
             info.next(),
             info.type,
             netId
@@ -349,17 +350,20 @@ void GreedyChannelRouter::r4() {
     }
 
     std::sort(ALL(v));
-    for (auto [col, type, netId]: v) {
-        size_t d = nt2d(type), end = nt2e(type);
-        if (d == 0) continue;
+    for (auto [bt, col, type, netId]: v) {
+        size_t end = nt2e(type);
+        // std::cerr _ col _ type _ netId _ d _ end _ std::endl;
+        // if (d == 0) continue;
         for (size_t i = 1; i < height-1; i++)
             if (rowEnd[i].netId == netId and rowEnd[i].empty(netId)) {
+                if (i == end) continue;
+                size_t d = i < end ? 1 : (size_t)-1;
                 size_t j = i;
                 while (j+d != end and rowEnd[j+d].empty(netId))
                     j += d;
                 while (j != i and rowEnd[j].netId != Node::EMPTY)
                     j -= d;
-                // std::cerr _ netId _ col _ type _ i _ j _ std::endl;
+                // std::cerr _ netId _ col _ type _ i _ j  _ '/' _ (j-i)*d _ MJL _ std::endl;
                 if ((j-i)*d >= MJL) {
                     assert(useV(netId, colIdx, i, j));
                 }
