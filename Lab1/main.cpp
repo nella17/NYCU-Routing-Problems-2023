@@ -4,6 +4,7 @@
 #include <fstream>
 #include <vector>
 #include <array>
+#include <map>
 #include <set>
 #include <string>
 #include <sstream>
@@ -47,7 +48,11 @@ int main(int argc, const char* argv[]) {
 
     size_t density = 0;
     {
-        std::vector<size_t> begin(nets.size()+1, netEnds.size()), end(nets.size()+1, 0);
+        std::map<size_t, size_t> begin{}, end{};
+        for (auto netId: nets) {
+            begin[netId] = netEnds.size();
+             end [netId] = 0;
+        }
         for (size_t i = 0; i < netEnds.size(); i++) {
             for (auto x: netEnds[i]) {
                 begin[x] = std::min(begin[x], i);
