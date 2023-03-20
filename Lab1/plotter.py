@@ -4,24 +4,11 @@ import random
 import matplotlib.pyplot as plt
 import argparse
 
-def int_to_color(net_id):
-    color_str = "#"
+def int_to_color(net_id, total):
     random.seed(net_id)
-    for _ in range(6):
-        number = random.randint(1, 14)
-        if number == 14:
-            color_str += "E"
-        elif number == 13:
-            color_str += "D"
-        elif number == 12:
-            color_str += "C"
-        elif number == 11:
-            color_str += "B"
-        elif number == 10:
-            color_str += "A"
-        else:
-            color_str += str(number)
-
+    idx = random.randint(0, total-1)
+    color = 0x111111 + (0xEEEEEE - 0x111111) * idx // (total-1)
+    color_str = f"#{color:06X}"
     return color_str
 
 def draw_line(plt, x1 ,y1 ,x2 ,y2 ,color):
@@ -54,15 +41,15 @@ def draw_img(top_row, bottom_row, nets_segment, maze_x_range, maze_y_range, titl
     for i in range(len(top_row)):
         now_color = "#666666"
         if top_row[i] != 0:
-            now_color = int_to_color(top_row[i])
+            now_color = int_to_color(top_row[i], len(nets_segment))
         plt.text(i, maze_y_range[1] + 0.5, str(top_row[i]), fontstyle='oblique',backgroundcolor=now_color,color="#FFFFFF", horizontalalignment='center', verticalalignment='center', fontsize = 3)
         now_color = "#666666"
         if bottom_row[i] != 0:
-            now_color = int_to_color(bottom_row[i])
+            now_color = int_to_color(bottom_row[i], len(nets_segment))
         plt.text(i, -0.5 , str(bottom_row[i]), fontstyle='oblique',backgroundcolor=now_color,color="#FFFFFF", horizontalalignment='center', verticalalignment='center', fontsize = 3)
     
     for net_name, segments in nets_segment.items():
-        net_color = int_to_color(int(net_name))
+        net_color = int_to_color(int(net_name), len(nets_segment))
         for segment in segments:
             draw_line(plt,segment[0],segment[1],segment[2],segment[3],net_color)
     plt.gca().set_aspect('equal', adjustable='box')
