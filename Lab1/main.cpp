@@ -49,9 +49,9 @@ int main(int argc, const char* argv[]) {
     router.via_cost = 5;
     router.netEnds = netEnds;
 
-    router.ICW = 14;
-    router.MJL = 3;
-    router.SNC = 9;
+    // router.ICW = 14;
+    // router.MJL = 3;
+    // router.SNC = 9;
 
     if (router.ICW != UINT_MAX) {
         auto finish = router.route();
