@@ -1,0 +1,48 @@
+---------- start to parse input ----------
+Start to parse net 1...
+Start to parse net 2...
+Start to parse net 3...
+Start to parse net 4...
+Start to parse net 5...
+Start to parse net 6...
+Start to parse net 7...
+Start to parse net 8...
+Start to parse net 9...
+Start to parse net 10...
+---------- parse input complete ----------
+
+---------- Open net checking ----------
+---------- Open net checking complete ----------
+
+---------- Short net checking ----------
+---------- Short net checking complete ----------
+
+---------- top/bottom row checking ----------
+---------- top/bottom row checking complete ----------
+
+---------- Spill-over area checking ----------
+---------- Spill-over area checking complete ----------
+
+---------- Signal-matching checking ----------
+The top/bottom signals are at tracks 15/0
+Number of signals of the case and the result at top are 12 and 12 respectively.
+Number of signals of the case and the result at bottom are 12 and 12 respectively.
+---------- Signal-matching checking complete ----------
+
+---------- Status Report ----------
+Track count: 14
+All signals are connected successfully.
+---------- WL Report ----------
+(Via cost = 5)
+WL of net 1 is 47 (via number: 4)
+WL of net 2 is 34 (via number: 3)
+WL of net 3 is 39 (via number: 4)
+WL of net 4 is 27 (via number: 2)
+WL of net 5 is 27 (via number: 2)
+WL of net 6 is 26 (via number: 2)
+WL of net 7 is 38 (via number: 4)
+WL of net 8 is 38 (via number: 4)
+WL of net 9 is 38 (via number: 4)
+WL of net 10 is 27 (via number: 2)
+Total wirelength is 341
+-----------------------------------
