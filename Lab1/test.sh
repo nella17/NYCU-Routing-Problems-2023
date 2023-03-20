@@ -1,6 +1,6 @@
 #!/bin/bash
 set -eux
-CXX=g++-12 make -j
+make -j
 mkdir -p output verify
 fd . ./testbench -x bash -c '
 time timeout 10 ./Lab1 {} ./output/{/} 2>/dev/null &&
