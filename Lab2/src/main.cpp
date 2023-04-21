@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
         return net->pin3D.size() > 1000 || net->pin2D.size() <= 1;
 
     }), ispdData->nets.end());
-    ispdData->numNet = ispdData->nets.size();
+    ispdData->numNet = (int)ispdData->nets.size();
 
 
     // Describe the usage of the given layer assignment algorithm
