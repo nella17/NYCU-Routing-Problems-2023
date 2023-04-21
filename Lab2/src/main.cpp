@@ -33,11 +33,11 @@ int main(int argc, char* const argv []) {
     // Delete nets that have all pins inside the same tile
     ispdData->nets.erase(std::remove_if(ispdData->nets.begin(), ispdData->nets.end(), [&](ISPDParser::Net *net) {
 
-        for (auto &pin : net->pins) {
+        for (auto &_pin : net->pins) {
 
-            int x = (std::get<0>(pin) - ispdData->lowerLeftX) / ispdData->tileWidth;
-            int y = (std::get<1>(pin) - ispdData->lowerLeftY) / ispdData->tileHeight;
-            int z = std::get<2>(pin) - 1;
+            int x = (std::get<0>(_pin) - ispdData->lowerLeftX) / ispdData->tileWidth;
+            int y = (std::get<1>(_pin) - ispdData->lowerLeftY) / ispdData->tileHeight;
+            int z = std::get<2>(_pin) - 1;
 
             if (std::any_of(net->pin3D.begin(), net->pin3D.end(), [x, y, z](const auto &pin) {
                 return pin.x == x && pin.y == y && pin.z == z;

@@ -18,8 +18,8 @@ class Net {
 
 public:
 
-    Net(const std::string &name, int id, int numPins, int minimumWidth)
-              : name(name), id(id), numPins(numPins), minimumWidth(minimumWidth)  {}
+    Net(const std::string &_name, int _id, int _numPins, int _minimumWidth)
+              : name(_name), id(_id), numPins(_numPins), minimumWidth(_minimumWidth)  {}
 
     std::string name;
     int id;
@@ -185,10 +185,8 @@ public:
     int x, y, z;
 
     Point(void) : x(0), y(0), z(0) {}
-    Point(int x, int y) : x(x), y(y), z(0) {}
-    Point(int x, int y, int z) : x(x), y(y), z(z) {}
-    Point(const Point &p) : x(p.x), y(p.y), z(p.z) {}
-    ~Point() {}
+    Point(int _x, int _y) : x(_x), y(_y), z(0) {}
+    Point(int _x, int _y, int _z) : x(_x), y(_y), z(_z) {}
 };
 
 // Route Point
@@ -198,38 +196,36 @@ public:
     int x, y, z;
     bool hori;
 
-    RPoint() { z = 0; }
-    RPoint(int x, int y, bool h) : x(x), y(y), hori(h) { z = 0; }
-    RPoint(int x, int y, int z, bool h) : x(x), y(y), z(z), hori(h) {}
-    RPoint(const RPoint &p) : x(p.x), y(p.y), z(p.z), hori(p.hori) {}
+    RPoint(): z(0) {}
+    RPoint(int _x, int _y, bool _h) : x(_x), y(_y), z(0), hori(_h) {}
+    RPoint(int _x, int _y, int _z, bool _h) : x(_x), y(_y), z(_z), hori(_h) {}
 };
 
 struct TwoPin
 {
     Point from, to;
     int wlen;
-    bool ripup;
-    bool overflow;
     Net *parNet;
+    bool overflow;
+    bool ripup;
     bool reroute;
     std::vector<RPoint> path;
 
-    TwoPin()
-    {
-        overflow = false;
-        ripup = false;
-        reroute = true;
-    }
+    TwoPin():
+        parNet(nullptr),
+        overflow(false),
+        ripup(false),
+        reroute(true)
+    {}
 
-    TwoPin(const TwoPin &t)
-    {
-        overflow = t.overflow;
-        from = t.from;
-        to = t.to;
-        ripup = false;
-        reroute = true;
-        parNet = t.parNet;
-    }
+    TwoPin(const TwoPin &t):
+        from(t.from),
+        to(t.to),
+        parNet(t.parNet),
+        overflow(t.overflow),
+        ripup(false),
+        reroute(true)
+    {}
 
     int HPWL()
     {
