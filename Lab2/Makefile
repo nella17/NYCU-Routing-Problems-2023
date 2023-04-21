@@ -1,7 +1,7 @@
 CXX := g++
-CXXFLAGS := -std=c++14 -O3 -I. -MMD -MP -g
+CXXFLAGS := -std=c++14 -O3 -Isrc -MMD -MP -g
 LDFLAGS := 
-SRCS := $(shell find . -name '*.cpp')
+SRCS := $(shell find src -name '*.cpp')
 OBJS := $(SRCS:.cpp=.o)
 DEPS := $(OBJS:.o=.d)
 TARGET := router

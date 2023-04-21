@@ -1,5 +1,6 @@
 #pragma once
 
+#include <istream>
 #include <ostream>
 #include <iterator>
 #include <vector>

@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
         graph.COLA(true);
 
         // Output result
-        graph.output3Dresult("3ds1.txt");
+        graph.output3Dresult(argv[2]);
     }
 
     delete ispdData;
