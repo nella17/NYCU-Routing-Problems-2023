@@ -9,15 +9,24 @@
 #include <cassert>
 
 
-int main(int argc, char **argv) {
+int main(int argc, char* const argv []) {
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s <inputFile> <outputFile> <timeLimitSec>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
 
-    assert(argc >= 3 && "Usage: ./router <inputFile> <outputFile>");
-    std::ifstream fp(argv[1]);
-    assert(fp.is_open() && "Failed to open input file");
-    ISPDParser::ispdData *ispdData = ISPDParser::parse(fp);
-    fp.close();
+    ISPDParser::ispdData *ispdData;
 
-    // std::cout << *ispdData << std::endl;
+    // parse input
+    {
+        std::ifstream fp(argv[1]);
+        assert(fp.is_open() && "Failed to open input file");
+        ispdData = ISPDParser::parse(fp);
+        fp.close();
+        // std::cout << *ispdData << std::endl;
+    }
+
+    // construct 2D grid graph
 
     // Convert XY coordinates to grid coordinates
     // Delete nets that have more than 1000 sinks
