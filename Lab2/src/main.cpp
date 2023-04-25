@@ -70,7 +70,7 @@ int main(int argc, char* const argv []) {
     }
     auto inputFile = argv[1];
     auto outputFile = argv[2];
-    auto timeLimitSec = argc < 3 ? 60 * 30 : atoi(argv[3]);
+    auto timeLimitSec = argc < 4 ? 60 * 30 : atoi(argv[3]);
 
     auto ispdData = parse_input(inputFile);
     construct_2D_grid_graph(ispdData);
