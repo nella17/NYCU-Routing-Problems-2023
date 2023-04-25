@@ -68,13 +68,16 @@ int main(int argc, char* const argv []) {
         fprintf(stderr, "Usage: %s <inputFile> <outputFile> <timeLimitSec>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
+    auto inputFile = argv[1];
+    auto outputFile = argv[2];
+    auto timeLimitSec = argc < 3 ? 60 * 30 : atoi(argv[3]);
 
-    auto ispdData = parse_input(argv[1]);
+    auto ispdData = parse_input(inputFile);
     construct_2D_grid_graph(ispdData);
 
     // Describe the usage of the given layer assignment algorithm
     // Only works for the given input file "3d.txt"
-    if (std::string(argv[1]).find("3d.txt") != std::string::npos) {
+    if (std::string(inputFile).find("3d.txt") != std::string::npos) {
         ISPDParser::Net *net = ispdData->nets[0];
         // Decompose multi-pin nets into two-pin nets
         // Since there are only 2 pins in the given net, this step is trivial
@@ -102,7 +105,7 @@ int main(int argc, char* const argv []) {
 
     auto graph = layer_assignment(ispdData);
     // Output result
-    graph.output3Dresult(argv[2]);
+    graph.output3Dresult(outputFile);
 
     delete ispdData;
 
