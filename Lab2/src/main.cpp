@@ -55,10 +55,10 @@ void construct_2D_grid_graph(ISPDParser::ispdData* ispdData) {
 
 auto layer_assignment(ISPDParser::ispdData* ispdData) {
     // Assign routing layers to the two-pin net
-    LayerAssignment::Graph graph;
-    graph.initialLA(*ispdData, 1);
-    graph.convertGRtoLA(*ispdData, true);
-    graph.COLA(true);
+    auto graph = new LayerAssignment::Graph;
+    graph->initialLA(*ispdData, 1);
+    graph->convertGRtoLA(*ispdData, true);
+    graph->COLA(true);
     return graph;
 }
 
@@ -105,8 +105,9 @@ int main(int argc, char* const argv []) {
 
     auto graph = layer_assignment(ispdData);
     // Output result
-    graph.output3Dresult(outputFile);
+    graph->output3Dresult(outputFile);
 
+    delete graph;
     delete ispdData;
 
     return 0;
