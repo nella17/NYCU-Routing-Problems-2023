@@ -218,6 +218,15 @@ struct TwoPin
         reroute(true)
     {}
 
+    TwoPin(Point f, Point t, Net* p = nullptr):
+        from(f),
+        to(t),
+        parNet(p),
+        overflow(false),
+        ripup(false),
+        reroute(true)
+    {}
+
     TwoPin(const TwoPin &t):
         from(t.from),
         to(t.to),

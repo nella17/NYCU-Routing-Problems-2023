@@ -7,6 +7,7 @@
 #include <utility>
 #include <string>
 #include <cassert>
+#include <queue>
 
 auto parse_input(const char* file) {
     // parse input
@@ -53,6 +54,36 @@ void construct_2D_grid_graph(ISPDParser::ispdData* ispdData) {
     ispdData->numNet = (int)ispdData->nets.size();
 }
 
+void net_decomposition(ISPDParser::ispdData* ispdData) {
+    for (auto net: ispdData->nets) {
+        auto sz = net->pin2D.size();
+        net->twopin.reserve(sz - 1);
+        std::vector<bool> vis(sz, false);
+        std::priority_queue<std::tuple<int, size_t, size_t>> pq{};
+        auto add = [&](size_t i) {
+            vis[i] = true;
+            auto [xi, yi, zi] = net->pin2D[i];
+            for (size_t j = 0; j < sz; j++) if (!vis[j]) {
+                auto [xj, yj, zj] = net->pin2D[j];
+                auto d = std::abs(xi - xj) + std::abs(yi - yj);
+                pq.emplace(-d, i, j);
+            }
+        };
+        add(0);
+        while (!pq.empty()) {
+            auto [d, i, j] = pq.top(); pq.pop();
+            if (vis[j]) continue;
+            net->twopin.emplace_back(
+                net->pin2D[i],
+                net->pin2D[j],
+                net
+            );
+            add(j);
+        }
+        assert(net->twopin.size() == sz - 1);
+    }
+}
+
 auto layer_assignment(ISPDParser::ispdData* ispdData) {
     // Assign routing layers to the two-pin net
     auto graph = new LayerAssignment::Graph;
@@ -74,7 +105,9 @@ int main(int argc, char* const argv []) {
 
     auto ispdData = parse_input(inputFile);
     construct_2D_grid_graph(ispdData);
+    net_decomposition(ispdData);
 
+    exit(-1);
     // Describe the usage of the given layer assignment algorithm
     // Only works for the given input file "3d.txt"
     if (std::string(inputFile).find("3d.txt") != std::string::npos) {
