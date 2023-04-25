@@ -8,24 +8,20 @@
 #include <string>
 #include <cassert>
 
-
-int main(int argc, char* const argv []) {
-    if (argc < 3) {
-        fprintf(stderr, "Usage: %s <inputFile> <outputFile> <timeLimitSec>\n", argv[0]);
-        exit(EXIT_FAILURE);
-    }
-
-    ISPDParser::ispdData *ispdData;
-
+auto parse_input(const char* file) {
     // parse input
-    {
-        std::ifstream fp(argv[1]);
-        assert(fp.is_open() && "Failed to open input file");
-        ispdData = ISPDParser::parse(fp);
-        fp.close();
-        // std::cout << *ispdData << std::endl;
-    }
+    std::ifstream fp(file);
+    assert(fp.is_open() && "Failed to open input file");
 
+    auto ispdData = ISPDParser::parse(fp);
+
+    fp.close();
+    // std::cout << *ispdData << std::endl;
+
+    return ispdData;
+}
+
+void construct_2D_grid_graph(ISPDParser::ispdData* ispdData) {
     // construct 2D grid graph
 
     // Convert XY coordinates to grid coordinates
@@ -55,14 +51,31 @@ int main(int argc, char* const argv []) {
 
     }), ispdData->nets.end());
     ispdData->numNet = (int)ispdData->nets.size();
+}
 
+auto layer_assignment(ISPDParser::ispdData* ispdData) {
+    // Assign routing layers to the two-pin net
+    LayerAssignment::Graph graph;
+    graph.initialLA(*ispdData, 1);
+    graph.convertGRtoLA(*ispdData, true);
+    graph.COLA(true);
+    return graph;
+}
+
+
+int main(int argc, char* const argv []) {
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s <inputFile> <outputFile> <timeLimitSec>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    auto ispdData = parse_input(argv[1]);
+    construct_2D_grid_graph(ispdData);
 
     // Describe the usage of the given layer assignment algorithm
     // Only works for the given input file "3d.txt"
     if (std::string(argv[1]).find("3d.txt") != std::string::npos) {
-
         ISPDParser::Net *net = ispdData->nets[0];
-
         // Decompose multi-pin nets into two-pin nets
         // Since there are only 2 pins in the given net, this step is trivial
         net->twopin.push_back(ISPDParser::TwoPin());
@@ -85,17 +98,13 @@ int main(int argc, char* const argv []) {
         twoPin.path.emplace_back(1, 2, true);
         twoPin.path.emplace_back(2, 1, false);
         twoPin.path.emplace_back(2, 0, false);
-
-        // Assign routing layers to the two-pin net
-        LayerAssignment::Graph graph;
-        graph.initialLA(*ispdData, 1);
-        graph.convertGRtoLA(*ispdData, true);
-        graph.COLA(true);
-
-        // Output result
-        graph.output3Dresult(argv[2]);
     }
 
+    auto graph = layer_assignment(ispdData);
+    // Output result
+    graph.output3Dresult(argv[2]);
+
     delete ispdData;
+
     return 0;
 }
