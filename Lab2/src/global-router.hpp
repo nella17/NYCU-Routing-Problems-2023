@@ -1,7 +1,11 @@
 #pragma once
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wconversion"
 #include "ispdData.h"
 #include "LayerAssignment.h"
+#pragma GCC diagnostic pop
 
 class GlobalRouter {
 public:
