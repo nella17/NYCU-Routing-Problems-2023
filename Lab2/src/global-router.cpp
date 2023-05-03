@@ -4,9 +4,22 @@
 
 GlobalRouter::GlobalRouter(ISPDParser::ispdData* _ispdData): ispdData(_ispdData) {}
 
+void GlobalRouter::init(ISPDParser::TwoPin* twopin) {
+    // TODO
+}
+
+void GlobalRouter::add(ISPDParser::TwoPin* twopin) {
+    // TODO
+}
+
 void GlobalRouter::route(int timeLimitSec) {
+    width  = (size_t)ispdData->numXGrid;
+    height = (size_t)ispdData->numYGrid;
     construct_2D_grid_graph();
     net_decomposition();
+    for (auto net: ispdData->nets)
+        for (auto& twopin: net->twopin)
+            twopins.emplace_back(&twopin);
 }
 
 void GlobalRouter::construct_2D_grid_graph() {
@@ -44,6 +57,7 @@ void GlobalRouter::construct_2D_grid_graph() {
 void GlobalRouter::net_decomposition() {
     for (auto net: ispdData->nets) {
         auto sz = net->pin2D.size();
+        net->twopin.clear();
         net->twopin.reserve(sz - 1);
         std::vector<bool> vis(sz, false);
         std::priority_queue<std::tuple<int, size_t, size_t>> pq{};
@@ -68,6 +82,7 @@ void GlobalRouter::net_decomposition() {
             add(j);
         }
         assert(net->twopin.size() == sz - 1);
+        assert(net->twopin.capacity() == sz - 1);
     }
 }
 
