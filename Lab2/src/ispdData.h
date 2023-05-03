@@ -227,15 +227,6 @@ struct TwoPin
         reroute(true)
     {}
 
-    TwoPin(const TwoPin &t):
-        from(t.from),
-        to(t.to),
-        parNet(t.parNet),
-        overflow(t.overflow),
-        ripup(false),
-        reroute(true)
-    {}
-
     int HPWL()
     {
         return abs(from.x - to.x) + abs(from.y - to.y);
