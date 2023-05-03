@@ -1,8 +1,23 @@
 #include "global-router.hpp"
 
+#include <cassert>
+#include <cmath>
+#include <numeric>
 #include <queue>
 
+#include <iostream>
+#define _ <<' ' <<
+
+GlobalRouter::Congestion::Congestion(int _cap): cap(_cap), net{} {}
+
 GlobalRouter::GlobalRouter(ISPDParser::ispdData* _ispdData): ispdData(_ispdData) {}
+
+GlobalRouter::Congestion& GlobalRouter::getCong(int x, int y, bool hori) {
+    if (hori)
+        return hcong[ (size_t)x * height + (size_t)y ];
+    else
+        return vcong[ (size_t)x + (size_t)y * width ];
+}
 
 void GlobalRouter::init(ISPDParser::TwoPin* twopin) {
     // TODO
@@ -20,6 +35,7 @@ void GlobalRouter::route(int timeLimitSec) {
     for (auto net: ispdData->nets)
         for (auto& twopin: net->twopin)
             twopins.emplace_back(&twopin);
+    init_cap();
 }
 
 void GlobalRouter::construct_2D_grid_graph() {
@@ -84,6 +100,46 @@ void GlobalRouter::net_decomposition() {
         assert(net->twopin.size() == sz - 1);
         assert(net->twopin.capacity() == sz - 1);
     }
+}
+
+void GlobalRouter::init_cap() {
+    auto verticalCapacity = std::accumulate(
+        ispdData->verticalCapacity.begin(),
+        ispdData->verticalCapacity.end(),
+        0
+    );
+    auto horizontalCapacity = std::accumulate(
+        ispdData->horizontalCapacity.begin(),
+        ispdData->horizontalCapacity.end(),
+        0
+    );
+    vcong.assign(width * (height - 1), Congestion(verticalCapacity));
+    hcong.assign((width - 1) * height, Congestion(horizontalCapacity));
+    for (auto capacityAdj: ispdData->capacityAdjs) {
+        auto [x1,y1,z1] = capacityAdj->grid1;
+        auto [x2,y2,z2] = capacityAdj->grid2;
+        assert(z1 == z2);
+        auto z = (size_t)z1 - 1;
+        auto lx = std::min(x1, x2), rx = std::max(x1, x2);
+        auto ly = std::min(y1, y2), ry = std::max(y1, y2);
+        auto dx = rx - lx, dy = ry - ly;
+        assert(dx + dy == 1);
+        auto hori = dx;
+        auto& cong = getCong(lx, ly, hori);
+        auto layerCap = (hori ? ispdData->horizontalCapacity : ispdData->verticalCapacity)[z];
+        cong.cap -= layerCap - capacityAdj->reducedCapacityLevel;
+        // std::cerr _ dx _ dy _ "/" _ lx _ ly _ "/" _ cong.cap _ layerCap _ std::endl;
+    }
+    /*
+    std::cerr << "horizontalCapacity\n";
+    for (int j = height-1; j >= 0; j--)
+        for (int i = 0; i+1 < width; i++)
+            std::cerr << getCong(i, j, 1).cap << " \n"[i+2==width];
+    std::cerr << "verticalCapacity\n";
+    for (int j = height-2; j >= 0; j--)
+        for (int i = 0; i < width; i++)
+            std::cerr << getCong(i, j, 0).cap << " \n"[i+1==width];
+    //*/
 }
 
 LayerAssignment::Graph* GlobalRouter::layer_assignment() {
