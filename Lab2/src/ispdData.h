@@ -187,6 +187,10 @@ public:
     Point(void) : x(0), y(0), z(0) {}
     Point(int _x, int _y) : x(_x), y(_y), z(0) {}
     Point(int _x, int _y, int _z) : x(_x), y(_y), z(_z) {}
+
+    friend std::ostream& operator<<(std::ostream &os, const Point& p) {
+        return os << '(' << p.x << ',' << p.y << ',' << p.z << ')';
+    }
 };
 
 // Route Point
@@ -199,12 +203,15 @@ public:
     RPoint(): z(0) {}
     RPoint(int _x, int _y, bool _h) : x(_x), y(_y), z(0), hori(_h) {}
     RPoint(int _x, int _y, int _z, bool _h) : x(_x), y(_y), z(_z), hori(_h) {}
+
+    friend std::ostream& operator<<(std::ostream &os, const RPoint& p) {
+        return os << '(' << p.x << ',' << p.y << ',' << p.z << ',' << p.hori << ')';
+    }
 };
 
 struct TwoPin
 {
     Point from, to;
-    int wlen;
     Net *parNet;
     bool overflow;
     bool ripup;
@@ -227,9 +234,19 @@ struct TwoPin
         reroute(true)
     {}
 
-    int HPWL()
-    {
+    int HPWL() const {
         return abs(from.x - to.x) + abs(from.y - to.y);
+    }
+
+    int wlen() const {
+        return path.size();
+    }
+
+    friend std::ostream& operator<<(std::ostream &os, const TwoPin& twopin) {
+        os << twopin.parNet->name << " " << twopin.from << " -> " << twopin.to << " : ";
+        for (auto p: twopin.path)
+            os << p << ' ';
+        return os;
     }
 };
 

@@ -8,14 +8,31 @@
 #pragma GCC diagnostic pop
 
 #include <vector>
-#include <unordered_set>
+#include <map>
 
 class GlobalRouter {
 public:
-    struct Congestion {
+    struct EdgeInfo {
+        int cap, daemon;
+    };
+    struct Edge {
         int cap;
-        std::multiset<size_t> net{};
-        Congestion(int);
+        std::map<size_t, size_t> net;
+        std::set<ISPDParser::TwoPin*> twopins;
+        Edge(int);
+        EdgeInfo dump() const;
+    };
+
+    struct CongSnapshot {
+        size_t width, height, min_width, min_spacing;
+        std::vector<EdgeInfo> vcong, hcong;
+    };
+    struct Congestion {
+        size_t width, height, min_width, min_spacing;
+        std::vector<Edge> vcong, hcong;
+        CongSnapshot dump() const;
+        void init(ISPDParser::ispdData*);
+        Edge& getEdge(int, int, bool);
     };
 
     ISPDParser::ispdData* const ispdData;
@@ -25,16 +42,15 @@ public:
     LayerAssignment::Graph* layer_assignment();
 
 private:
-    size_t width, height;
-
-    std::vector<Congestion> vcong, hcong;
-    Congestion& getCong(int, int, bool);
+    Congestion congestion;
 
     std::vector<ISPDParser::TwoPin*> twopins;
-    void init(ISPDParser::TwoPin*);
-    void add(ISPDParser::TwoPin*);
+    void ripup(ISPDParser::TwoPin*);
+    void place(ISPDParser::TwoPin*);
+
+    void Lshape(ISPDParser::TwoPin*);
 
     void construct_2D_grid_graph();
     void net_decomposition();
-    void init_cap();
+    void init_route();
 };
