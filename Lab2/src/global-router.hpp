@@ -26,26 +26,26 @@ public:
 
 private:
     struct Edge {
-        int cap;
-        ld he, of;
+        int cap, demand, he /*, of*/;
         std::map<int, size_t> net;
         std::set<ISPDParser::TwoPin*> twopins;
         Edge(int);
-        int demand() const;
-        void push(ISPDParser::TwoPin*);
+        void push(ISPDParser::TwoPin*, int, int);
+        void pop (ISPDParser::TwoPin*, int, int);
     };
     ld cost(const Edge&, int);
     ld score(const ISPDParser::TwoPin&);
 
-    size_t width, height, min_width, min_spacing;
-    std::vector<Edge> vcong, hcong;
+    size_t width, height;
+    int min_width, min_spacing;
+    std::vector<Edge> vedges, hedges;
     Edge& getEdge(int, int, bool);
 
     std::vector<ISPDParser::TwoPin*> twopins;
     void ripup(ISPDParser::TwoPin*);
     void place(ISPDParser::TwoPin*);
 
-    void Lshape(ISPDParser::TwoPin*);
+    void Lshape(ISPDParser::TwoPin*, int);
 
     void construct_2D_grid_graph();
     void net_decomposition();

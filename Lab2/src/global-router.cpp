@@ -5,21 +5,27 @@
 #include <numeric>
 #include <queue>
 
-GlobalRouter::Edge::Edge(int _cap): cap(_cap), he(1), of(0), net{}, twopins{} {}
+GlobalRouter::Edge::Edge(int _cap): cap(_cap), he(1), /*of(0),*/ net{}, twopins{} {}
 
-int GlobalRouter::Edge::demand() const {
-    return (int)net.size();
-}
-
-void GlobalRouter::Edge::push(ISPDParser::TwoPin* twopin) {
+void GlobalRouter::Edge::push(ISPDParser::TwoPin* twopin, int min_width, int min_spacing) {
     auto [it, insert] = net.try_emplace(twopin->parNet->id, 0);
     if (insert) it->second++;
-    twopins.emplace(twopin);
+    assert(twopins.emplace(twopin).second);
+    demand += std::max(twopin->parNet->minimumWidth, min_width) + min_spacing;
+}
+
+void GlobalRouter::Edge::pop(ISPDParser::TwoPin* twopin, int min_width, int min_spacing) {
+    auto it = net.find(twopin->parNet->id);
+    if (--it->second == 0)
+        net.erase(it);
+    assert(twopins.erase(twopin));
+    demand -= std::max(twopin->parNet->minimumWidth, min_width) + min_spacing;
+    he++;
 }
 
 ld GlobalRouter::cost(const Edge& e, int k) {
     auto dah = e.he / (C[0] + C[1] * std::sqrt(k));
-    auto pe = 1 + C[2] / (1 + std::exp(C[3] * (e.cap - e.demand())));
+    auto pe = 1 + C[2] / (1 + std::exp(C[3] * (e.cap - e.demand)));
     auto be = C[4] + C[5] / std::pow(2, k);
     return (1 + dah) * pe + be;
 }
@@ -29,10 +35,11 @@ ld GlobalRouter::score(const ISPDParser::TwoPin& twopin) {
 }
 
 GlobalRouter::Edge& GlobalRouter::getEdge(int x, int y, bool hori) {
+    // std::cerr _ "getEdge" _ x _ y _ hori _ std::endl;
     if (hori)
-        return hcong[ (size_t)x * height + (size_t)y ];
+        return vedges[ (size_t)x * height + (size_t)y ];
     else
-        return vcong[ (size_t)x + (size_t)y * width ];
+        return hedges[ (size_t)x + (size_t)y * width ];
 }
 
 GlobalRouter::GlobalRouter(ISPDParser::ispdData* _ispdData, std::array<ld, C_SIZE> _C): 
@@ -41,17 +48,18 @@ GlobalRouter::GlobalRouter(ISPDParser::ispdData* _ispdData, std::array<ld, C_SIZ
 void GlobalRouter::ripup(ISPDParser::TwoPin* twopin) {
     assert(!twopin->ripup);
     twopin->ripup = true;
-    // TODO
+    for (auto rp: twopin->path)
+        getEdge(rp.x, rp.y, rp.hori).pop(twopin, min_width, min_spacing);
 }
 
 void GlobalRouter::place(ISPDParser::TwoPin* twopin) {
     assert(twopin->ripup);
     twopin->ripup = false;
     for (auto rp: twopin->path)
-        getEdge(rp.x, rp.y, rp.hori).push(twopin);
+        getEdge(rp.x, rp.y, rp.hori).push(twopin, min_width, min_spacing);
 }
 
-void GlobalRouter::Lshape(ISPDParser::TwoPin* twopin) {
+void GlobalRouter::Lshape(ISPDParser::TwoPin* twopin, int k) {
     auto Lx = [&](int y, int lx, int rx, auto func) {
         if (lx > rx) std::swap(lx, rx);
         for (auto x = lx; x < rx; x++)
@@ -77,7 +85,7 @@ void GlobalRouter::Lshape(ISPDParser::TwoPin* twopin) {
     auto Lcost = [&](ISPDParser::Point m) {
         ld c = 0;
         auto func = [&](int x, int y, bool hori) {
-            c += cost(getEdge(x, y, hori), 0);
+            c += cost(getEdge(x, y, hori), k);
         };
         L(f, m, func);
         L(m, t, func);
@@ -173,12 +181,12 @@ void GlobalRouter::net_decomposition() {
 void GlobalRouter::init_congestion() {
     width  = (size_t)ispdData->numXGrid;
     height = (size_t)ispdData->numYGrid;
-    min_width = (size_t)average(ispdData->minimumWidth);
-    min_spacing = (size_t)average(ispdData->minimumSpacing);
+    min_width = average(ispdData->minimumWidth);
+    min_spacing = average(ispdData->minimumSpacing);
     auto verticalCapacity = std::accumulate(ALL(ispdData->verticalCapacity), 0);
     auto horizontalCapacity = std::accumulate(ALL(ispdData->horizontalCapacity), 0);
-    vcong.assign(width * (height - 1), Edge(verticalCapacity));
-    hcong.assign((width - 1) * height, Edge(horizontalCapacity));
+    vedges.assign(width * (height - 1), Edge(verticalCapacity));
+    hedges.assign((width - 1) * height, Edge(horizontalCapacity));
     for (auto capacityAdj: ispdData->capacityAdjs) {
         auto [x1,y1,z1] = capacityAdj->grid1;
         auto [x2,y2,z2] = capacityAdj->grid2;
@@ -207,14 +215,19 @@ void GlobalRouter::init_congestion() {
 }
 
 void GlobalRouter::pattern_routing() {
+    for (auto twopin: twopins) {
+        twopin->ripup = true;
+        twopin->reroute = false;
+        Lshape(twopin, 0);
+        // std::cerr _ *twopin _ std::endl;
+        place(twopin);
+    }
     std::sort(twopins.begin(), twopins.end(), [&](auto a, auto b) {
         return score(*a) > score(*b);
     });
     for (auto twopin: twopins) {
-        twopin->ripup = true;
-        twopin->reroute = false;
-        Lshape(twopin);
-        // std::cerr _ *twopin _ std::endl;
+        ripup(twopin);
+        Lshape(twopin, 0);
         place(twopin);
     }
 }
