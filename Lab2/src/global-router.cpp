@@ -33,59 +33,11 @@ GlobalRouter::EdgeInfo GlobalRouter::Edge::dump() const  {
     };
 }
 
-GlobalRouter::Edge& GlobalRouter::Congestion::getEdge(int x, int y, bool hori) {
+GlobalRouter::Edge& GlobalRouter::getEdge(int x, int y, bool hori) {
     if (hori)
         return hcong[ (size_t)x * height + (size_t)y ];
     else
         return vcong[ (size_t)x + (size_t)y * width ];
-}
-
-GlobalRouter::CongSnapshot GlobalRouter::Congestion::dump() const {
-    CongSnapshot shot{
-        .width = width,
-        .height = height,
-        .min_width = min_width,
-        .min_spacing = min_spacing,
-        .vcong{},
-        .hcong{},
-    };
-    return shot;
-}
-
-void GlobalRouter::Congestion::init(ISPDParser::ispdData* ispdData) {
-    width  = (size_t)ispdData->numXGrid;
-    height = (size_t)ispdData->numYGrid;
-    min_width = (size_t)average(ispdData->minimumWidth);
-    min_spacing = (size_t)average(ispdData->minimumSpacing);
-    auto verticalCapacity = std::accumulate(ALL(ispdData->verticalCapacity), 0);
-    auto horizontalCapacity = std::accumulate(ALL(ispdData->horizontalCapacity), 0);
-    vcong.assign(width * (height - 1), Edge(verticalCapacity));
-    hcong.assign((width - 1) * height, Edge(horizontalCapacity));
-    for (auto capacityAdj: ispdData->capacityAdjs) {
-        auto [x1,y1,z1] = capacityAdj->grid1;
-        auto [x2,y2,z2] = capacityAdj->grid2;
-        if (z1 != z2) continue;
-        auto z = (size_t)z1 - 1;
-        auto lx = std::min(x1, x2), rx = std::max(x1, x2);
-        auto ly = std::min(y1, y2), ry = std::max(y1, y2);
-        auto dx = rx - lx, dy = ry - ly;
-        if (dx + dy != 1) continue;
-        auto hori = dx;
-        auto& cong = getEdge(lx, ly, hori);
-        auto layerCap = (hori ? ispdData->horizontalCapacity : ispdData->verticalCapacity)[z];
-        cong.cap -= layerCap - capacityAdj->reducedCapacityLevel;
-        // std::cerr _ dx _ dy _ "/" _ lx _ ly _ "/" _ cong.cap _ layerCap _ std::endl;
-    }
-    /*
-    std::cerr << "horizontalCapacity\n";
-    for (int j = height-1; j >= 0; j--)
-        for (int i = 0; i+1 < width; i++)
-            std::cerr << getCong(i, j, 1).cap << " \n"[i+2==width];
-    std::cerr << "verticalCapacity\n";
-    for (int j = height-2; j >= 0; j--)
-        for (int i = 0; i < width; i++)
-            std::cerr << getCong(i, j, 0).cap << " \n"[i+1==width];
-    //*/
 }
 
 GlobalRouter::GlobalRouter(ISPDParser::ispdData* _ispdData): ispdData(_ispdData) {}
@@ -201,6 +153,42 @@ void GlobalRouter::net_decomposition() {
         assert(net->twopin.size() == sz - 1);
         assert(net->twopin.capacity() == sz - 1);
     }
+}
+
+void GlobalRouter::init_congestion() {
+    width  = (size_t)ispdData->numXGrid;
+    height = (size_t)ispdData->numYGrid;
+    min_width = (size_t)average(ispdData->minimumWidth);
+    min_spacing = (size_t)average(ispdData->minimumSpacing);
+    auto verticalCapacity = std::accumulate(ALL(ispdData->verticalCapacity), 0);
+    auto horizontalCapacity = std::accumulate(ALL(ispdData->horizontalCapacity), 0);
+    vcong.assign(width * (height - 1), Edge(verticalCapacity));
+    hcong.assign((width - 1) * height, Edge(horizontalCapacity));
+    for (auto capacityAdj: ispdData->capacityAdjs) {
+        auto [x1,y1,z1] = capacityAdj->grid1;
+        auto [x2,y2,z2] = capacityAdj->grid2;
+        if (z1 != z2) continue;
+        auto z = (size_t)z1 - 1;
+        auto lx = std::min(x1, x2), rx = std::max(x1, x2);
+        auto ly = std::min(y1, y2), ry = std::max(y1, y2);
+        auto dx = rx - lx, dy = ry - ly;
+        if (dx + dy != 1) continue;
+        auto hori = dx;
+        auto& cong = getEdge(lx, ly, hori);
+        auto layerCap = (hori ? ispdData->horizontalCapacity : ispdData->verticalCapacity)[z];
+        cong.cap -= layerCap - capacityAdj->reducedCapacityLevel;
+        // std::cerr _ dx _ dy _ "/" _ lx _ ly _ "/" _ cong.cap _ layerCap _ std::endl;
+    }
+    /*
+    std::cerr << "horizontalCapacity\n";
+    for (int j = height-1; j >= 0; j--)
+        for (int i = 0; i+1 < width; i++)
+            std::cerr << getCong(i, j, 1).cap << " \n"[i+2==width];
+    std::cerr << "verticalCapacity\n";
+    for (int j = height-2; j >= 0; j--)
+        for (int i = 0; i < width; i++)
+            std::cerr << getCong(i, j, 0).cap << " \n"[i+1==width];
+    //*/
 }
 
 void GlobalRouter::init_route() {

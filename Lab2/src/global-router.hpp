@@ -23,18 +23,6 @@ public:
         EdgeInfo dump() const;
     };
 
-    struct CongSnapshot {
-        size_t width, height, min_width, min_spacing;
-        std::vector<EdgeInfo> vcong, hcong;
-    };
-    struct Congestion {
-        size_t width, height, min_width, min_spacing;
-        std::vector<Edge> vcong, hcong;
-        CongSnapshot dump() const;
-        void init(ISPDParser::ispdData*);
-        Edge& getEdge(int, int, bool);
-    };
-
     ISPDParser::ispdData* const ispdData;
     GlobalRouter(ISPDParser::ispdData*);
 
@@ -42,7 +30,9 @@ public:
     LayerAssignment::Graph* layer_assignment();
 
 private:
-    Congestion congestion;
+    size_t width, height, min_width, min_spacing;
+    std::vector<Edge> vcong, hcong;
+    Edge& getEdge(int, int, bool);
 
     std::vector<ISPDParser::TwoPin*> twopins;
     void ripup(ISPDParser::TwoPin*);
@@ -52,5 +42,6 @@ private:
 
     void construct_2D_grid_graph();
     void net_decomposition();
+    void init_congestion();
     void init_route();
 };
