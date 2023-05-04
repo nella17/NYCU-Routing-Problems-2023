@@ -10,6 +10,8 @@
 #include <vector>
 #include <map>
 
+#include "utils.hpp"
+
 class GlobalRouter {
 public:
     struct EdgeInfo {

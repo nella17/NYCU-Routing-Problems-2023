@@ -4,25 +4,6 @@
 #include <cmath>
 #include <numeric>
 #include <queue>
-#include <random>
-#include <chrono>
-
-#include <iostream>
-#define _ <<' ' <<
-#define ALL(v) v.begin(),v.end()
-
-std::mt19937 rng((unsigned)std::chrono::steady_clock::now().time_since_epoch().count());
-template<typename T>
-T randint(T l, T r) { return std::uniform_int_distribution<T>(l,r)(rng); }
-template<typename T>
-T randint(T n) { return randint(0,n-1); }
-template<typename T>
-inline T average(const std::vector<T>& v) {
-    T i{};
-    for (const auto& x: v)
-        i += x;
-    return i / (T)v.size();
-}
 
 GlobalRouter::Edge::Edge(int _cap): cap(_cap), net{}, twopins{} {}
 
