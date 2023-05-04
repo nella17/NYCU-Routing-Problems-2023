@@ -28,10 +28,11 @@ private:
     struct Edge {
         int cap;
         ld he, of;
-        std::map<size_t, size_t> net;
+        std::map<int, size_t> net;
         std::set<ISPDParser::TwoPin*> twopins;
         Edge(int);
         int demand() const;
+        void push(ISPDParser::TwoPin*);
     };
     ld cost(const Edge&, int);
     ld score(const ISPDParser::TwoPin&);
@@ -49,5 +50,5 @@ private:
     void construct_2D_grid_graph();
     void net_decomposition();
     void init_congestion();
-    void init_route();
+    void pattern_routing();
 };

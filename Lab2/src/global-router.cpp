@@ -6,8 +6,15 @@
 #include <queue>
 
 GlobalRouter::Edge::Edge(int _cap): cap(_cap), he(1), of(0), net{}, twopins{} {}
+
 int GlobalRouter::Edge::demand() const {
     return (int)net.size();
+}
+
+void GlobalRouter::Edge::push(ISPDParser::TwoPin* twopin) {
+    auto [it, insert] = net.try_emplace(twopin->parNet->id, 0);
+    if (insert) it->second++;
+    twopins.emplace(twopin);
 }
 
 ld GlobalRouter::cost(const Edge& e, int k) {
@@ -33,41 +40,59 @@ GlobalRouter::GlobalRouter(ISPDParser::ispdData* _ispdData, std::array<ld, C_SIZ
 
 void GlobalRouter::ripup(ISPDParser::TwoPin* twopin) {
     assert(!twopin->ripup);
+    twopin->ripup = true;
     // TODO
 }
 
 void GlobalRouter::place(ISPDParser::TwoPin* twopin) {
     assert(twopin->ripup);
-    // TODO
+    twopin->ripup = false;
+    for (auto rp: twopin->path)
+        getEdge(rp.x, rp.y, rp.hori).push(twopin);
 }
 
 void GlobalRouter::Lshape(ISPDParser::TwoPin* twopin) {
+    auto Lx = [&](int y, int lx, int rx, auto func) {
+        if (lx > rx) std::swap(lx, rx);
+        for (auto x = lx; x < rx; x++)
+            func(x, y, 1);
+    };
+    auto Ly = [&](int x, int ly, int ry, auto func) {
+        if (ly > ry) std::swap(ly, ry);
+        for (auto y = ly; y < ry; y++)
+            func(x, y, 0);
+    };
+    auto L = [&](ISPDParser::Point p1, ISPDParser::Point p2, auto func) {
+        // std::cerr _ "L" _ p1 _ p2 _ std::endl;
+        if (p1.x == p2.x) return Ly(p1.x, p1.y, p2.y, func);
+        if (p1.y == p2.y) return Lx(p1.y, p1.x, p2.x, func);
+    };
+
     assert(twopin->ripup);
     twopin->path.clear();
     auto f = twopin->from, t = twopin->to;
     if (f.y > t.y) std::swap(f, t);
     if (f.x > t.x) std::swap(f, t);
-    auto Lx = [&](int y, int lx, int rx) {
-        if (lx > rx) std::swap(lx, rx);
-        for (auto x = lx; x < rx; x++)
-            twopin->path.emplace_back(x, y, 1);
+
+    auto Lcost = [&](ISPDParser::Point m) {
+        ld c = 0;
+        auto func = [&](int x, int y, bool hori) {
+            c += cost(getEdge(x, y, hori), 0);
+        };
+        L(f, m, func);
+        L(m, t, func);
+        return c;
     };
-    auto Ly = [&](int x, int ly, int ry) {
-        if (ly > ry) std::swap(ly, ry);
-        for (auto y = ly; y < ry; y++)
-            twopin->path.emplace_back(x, y, 0);
+
+    ISPDParser::Point m1(f.x, t.y), m2(t.x, f.y);
+    auto c1 = Lcost(m1), c2 = Lcost(m2);
+
+    auto m = (c1 != c2 ? c1 < c2 : randint(2))  ? m1 : m2;
+
+    auto func = [&](int x, int y, bool hori) {
+        twopin->path.emplace_back(x, y, hori);
     };
-    auto L = [&](ISPDParser::Point p1, ISPDParser::Point p2) {
-        // std::cerr _ "L" _ p1 _ p2 _ std::endl;
-        if (p1.x == p2.x) return Ly(p1.x, p1.y, p2.y);
-        if (p1.y == p2.y) return Lx(p1.y, p1.x, p2.x);
-    };
-    int d = randint(2);
-    ISPDParser::Point m(
-        d ? f.x : t.x,
-        d ? t.y : f.y
-    );
-    L(f, m); L(m, t);
+    L(f, m, func); L(m, t, func);
 }
 
 void GlobalRouter::route(int timeLimitSec) {
@@ -76,7 +101,8 @@ void GlobalRouter::route(int timeLimitSec) {
     for (auto net: ispdData->nets)
         for (auto& twopin: net->twopin)
             twopins.emplace_back(&twopin);
-    init_route();
+    init_congestion();
+    pattern_routing();
     // exit(-1);
 }
 
@@ -180,14 +206,15 @@ void GlobalRouter::init_congestion() {
     //*/
 }
 
-void GlobalRouter::init_route() {
-    // auto savedCong
+void GlobalRouter::pattern_routing() {
+    std::sort(twopins.begin(), twopins.end(), [&](auto a, auto b) {
+        return score(*a) > score(*b);
+    });
     for (auto twopin: twopins) {
         twopin->ripup = true;
         twopin->reroute = false;
         Lshape(twopin);
         // std::cerr _ *twopin _ std::endl;
-        // for (auto x
         place(twopin);
     }
 }
