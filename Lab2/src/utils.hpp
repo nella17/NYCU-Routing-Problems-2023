@@ -11,6 +11,8 @@ using ld = long double;
 
 extern std::mt19937 rng;
 
+double sec_since(std::chrono::steady_clock::time_point);
+
 template<typename T>
 T randint(T l, T r) { return std::uniform_int_distribution<T>(l,r)(rng); }
 
