@@ -7,6 +7,7 @@
 #include "LayerAssignment.h"
 #pragma GCC diagnostic pop
 
+#include <array>
 #include <vector>
 #include <map>
 
@@ -14,6 +15,8 @@
 
 class GlobalRouter {
 public:
+    static const size_t C_SIZE = 8;
+
     struct EdgeInfo {
         int cap, daemon;
     };
@@ -26,7 +29,8 @@ public:
     };
 
     ISPDParser::ispdData* const ispdData;
-    GlobalRouter(ISPDParser::ispdData*);
+    const std::array<ld, C_SIZE> C;
+    GlobalRouter(ISPDParser::ispdData*, std::array<ld, C_SIZE>);
 
     void route(int);
     LayerAssignment::Graph* layer_assignment();

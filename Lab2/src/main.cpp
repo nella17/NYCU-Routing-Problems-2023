@@ -39,7 +39,10 @@ int main(int argc, char* const argv []) {
 
     auto ispdData = parse_input(inputFile);
 
-    GlobalRouter gr(ispdData);
+    GlobalRouter gr(
+        ispdData,
+        { 7, 4, 150, 0.3, 30, 200, 30, 1 }
+    );
     gr.route(timeLimitSec);
 
     // Describe the usage of the given layer assignment algorithm

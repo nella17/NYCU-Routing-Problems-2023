@@ -21,7 +21,8 @@ GlobalRouter::Edge& GlobalRouter::getEdge(int x, int y, bool hori) {
         return vcong[ (size_t)x + (size_t)y * width ];
 }
 
-GlobalRouter::GlobalRouter(ISPDParser::ispdData* _ispdData): ispdData(_ispdData) {}
+GlobalRouter::GlobalRouter(ISPDParser::ispdData* _ispdData, std::array<ld, C_SIZE> _C): 
+    ispdData(_ispdData), C(_C) {}
 
 void GlobalRouter::ripup(ISPDParser::TwoPin* twopin) {
     assert(!twopin->ripup);
