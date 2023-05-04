@@ -17,17 +17,6 @@ class GlobalRouter {
 public:
     static const size_t C_SIZE = 8;
 
-    struct EdgeInfo {
-        int cap, daemon;
-    };
-    struct Edge {
-        int cap;
-        std::map<size_t, size_t> net;
-        std::set<ISPDParser::TwoPin*> twopins;
-        Edge(int);
-        EdgeInfo dump() const;
-    };
-
     ISPDParser::ispdData* const ispdData;
     const std::array<ld, C_SIZE> C;
     GlobalRouter(ISPDParser::ispdData*, std::array<ld, C_SIZE>);
@@ -36,6 +25,17 @@ public:
     LayerAssignment::Graph* layer_assignment();
 
 private:
+    struct Edge {
+        int cap;
+        ld he, of;
+        std::map<size_t, size_t> net;
+        std::set<ISPDParser::TwoPin*> twopins;
+        Edge(int);
+        int demand() const;
+    };
+    ld cost(const Edge&, int);
+    ld score(const ISPDParser::TwoPin&);
+
     size_t width, height, min_width, min_spacing;
     std::vector<Edge> vcong, hcong;
     Edge& getEdge(int, int, bool);

@@ -5,13 +5,20 @@
 #include <numeric>
 #include <queue>
 
-GlobalRouter::Edge::Edge(int _cap): cap(_cap), net{}, twopins{} {}
+GlobalRouter::Edge::Edge(int _cap): cap(_cap), he(1), of(0), net{}, twopins{} {}
+int GlobalRouter::Edge::demand() const {
+    return (int)net.size();
+}
 
-GlobalRouter::EdgeInfo GlobalRouter::Edge::dump() const  {
-    return EdgeInfo{
-        .cap = this->cap,
-        .daemon = (int)this->net.size(),
-    };
+ld GlobalRouter::cost(const Edge& e, int k) {
+    auto dah = e.he / (C[0] + C[1] * std::sqrt(k));
+    auto pe = 1 + C[2] / (1 + std::exp(C[3] * (e.cap - e.demand())));
+    auto be = C[4] + C[5] / std::pow(2, k);
+    return (1 + dah) * pe + be;
+}
+
+ld GlobalRouter::score(const ISPDParser::TwoPin& twopin) {
+    return C[6] * twopin.overflow + C[7] * twopin.wlen();
 }
 
 GlobalRouter::Edge& GlobalRouter::getEdge(int x, int y, bool hori) {

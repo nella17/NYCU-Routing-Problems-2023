@@ -213,23 +213,18 @@ struct TwoPin
 {
     Point from, to;
     Net *parNet;
-    bool overflow;
+    int overflow;
     bool ripup;
     bool reroute;
     std::vector<RPoint> path;
 
-    TwoPin():
-        parNet(nullptr),
-        overflow(false),
-        ripup(false),
-        reroute(true)
-    {}
+    TwoPin(): TwoPin(Point(), Point()) {}
 
     TwoPin(Point f, Point t, Net* p = nullptr):
         from(f),
         to(t),
         parNet(p),
-        overflow(false),
+        overflow(0),
         ripup(false),
         reroute(true)
     {}
