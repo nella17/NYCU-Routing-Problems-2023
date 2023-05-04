@@ -46,9 +46,11 @@ private:
     void place(ISPDParser::TwoPin*);
 
     void Lshape(ISPDParser::TwoPin*, int);
+    void HUM(ISPDParser::TwoPin*, int);
 
     void construct_2D_grid_graph();
     void net_decomposition();
     void init_congestion();
     void pattern_routing();
+    int HUM_routing(int);
 };

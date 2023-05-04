@@ -103,6 +103,15 @@ void GlobalRouter::Lshape(ISPDParser::TwoPin* twopin, int k) {
     L(f, m, func); L(m, t, func);
 }
 
+void GlobalRouter::HUM(ISPDParser::TwoPin* twopin, int k) {
+    assert(twopin->ripup);
+    twopin->path.clear();
+    auto f = twopin->from, t = twopin->to;
+    if (f.y > t.y) std::swap(f, t);
+    if (f.x > t.x) std::swap(f, t);
+    // TODO
+}
+
 void GlobalRouter::route(int timeLimitSec) {
     construct_2D_grid_graph();
     net_decomposition();
@@ -111,6 +120,8 @@ void GlobalRouter::route(int timeLimitSec) {
             twopins.emplace_back(&twopin);
     init_congestion();
     pattern_routing();
+    for (int k = 0; k < 1; k++)
+        HUM_routing(k);
     // exit(-1);
 }
 
@@ -230,6 +241,42 @@ void GlobalRouter::pattern_routing() {
         Lshape(twopin, 0);
         place(twopin);
     }
+}
+
+int GlobalRouter::HUM_routing(int k) {
+    std::cerr _ "HUM_routing" _ k _ std::endl;
+    auto start = std::chrono::steady_clock::now();
+
+    for (auto twopin: twopins)
+        twopin->overflow = 0;
+    for (const auto& edges: { vedges, hedges })
+        for (const auto& edge: edges)
+            if (edge.demand > edge.cap)
+                for (auto twopin: edge.twopins)
+                    twopin->overflow++;
+
+    int ripupcnt = 0;
+    for (auto twopin: twopins)
+        if (twopin->overflow)
+            ripup(twopin), ripupcnt++;
+    std::cerr _ "ripup" _ ripupcnt _ "twopin" _ std::endl;
+
+    std::sort(twopins.begin(), twopins.end(), [&](auto a, auto b) {
+        if (a->ripup != b->ripup)
+            return a->ripup > b->ripup;
+        return score(*a) > score(*b);
+    });
+    for (auto twopin: twopins) {
+        if (twopin->ripup) {
+            HUM(twopin, k);
+            place(twopin);
+        }
+    }
+
+    std::cerr.precision(2);
+    std::cerr _ "HUM_routing" _ k _ std::fixed << sec_since(start) << "s" << std::endl;
+
+    return ripupcnt;
 }
 
 LayerAssignment::Graph* GlobalRouter::layer_assignment() {
