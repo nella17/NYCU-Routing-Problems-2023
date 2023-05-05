@@ -497,18 +497,21 @@ int GlobalRouter::HUM_routing() {
 
     int ripupcnt = 0;
     // double mxt = 0;
+    for (auto twopin: twopins)
+        if (twopin->overflow)
+            ripupcnt++;
+    std::cerr _ "ripup" _ ripupcnt _ "twopin" _ std::endl;
 
     for (auto twopin: twopins)
         if (twopin->overflow) {
     // auto begin = std::chrono::steady_clock::now();
-            ripup(twopin), ripupcnt++;
+            ripup(twopin);
             HUM(twopin);
             place(twopin);
     // mxt = std::max(mxt, sec_since(begin));
         }
 
     // std::cerr _ "max HUM" _ mxt _ "s\n";
-    std::cerr _ "ripup" _ ripupcnt _ "twopin" _ std::endl;
 #ifdef DEBUG
     print_edges();
 #endif
