@@ -16,7 +16,7 @@ void GlobalRouter::Edge::push(TwoPin* twopin, int minw, int mins) {
     else
         demand += std::max(twopin->parNet->minimumWidth, minw) + mins;
     assert(twopins.emplace(twopin).second);
-    of++;
+    if (twopin->overflow) of++;
 }
 
 void GlobalRouter::Edge::pop(TwoPin* twopin, int minw, int mins) {
@@ -83,11 +83,11 @@ ld GlobalRouter::cost(const Edge& e) const {
 }
 
 ld GlobalRouter::score(const TwoPin& twopin) const {
-    return C[6] * twopin.overflow + C[7] * twopin.wlen();
+    return C[6] * twopin.overflow + C[7] * twopin.wlen() + C[8] * twopin.reroute;
 }
 
 int GlobalRouter::delta(const TwoPin& twopin) const {
-    return (int)C[8] + (int)C[9] / twopin.reroute;
+    return (int)C[9] + (int)C[10] / twopin.reroute;
 }
 
 GlobalRouter::Edge& GlobalRouter::getEdge(RPoint rp) {
@@ -121,10 +121,10 @@ void GlobalRouter::place(TwoPin* twopin) {
 }
 
 void GlobalRouter::Lshape(TwoPin* twopin) {
-    return Lshape(twopin->path, twopin->from, twopin->to);
+    return Lshape_impl(twopin->path, twopin->from, twopin->to);
 }
 
-void GlobalRouter::Lshape(Path& path, Point f, Point t) {
+void GlobalRouter::Lshape_impl(Path& path, Point f, Point t) {
     auto Lx = [&](int y, int L, int R, auto func) {
         if (L > R) std::swap(L, R);
         for (auto x = L; x < R; x++)
@@ -166,7 +166,7 @@ void GlobalRouter::Lshape(Path& path, Point f, Point t) {
     L(f, m, func); L(m, t, func);
 }
 
-void GlobalRouter::VMR(Point s, Point t, BoxCost& box) {
+void GlobalRouter::VMR_impl(Point s, Point t, BoxCost& box) {
     auto calc = [&](int y, int bx, int ex) {
         auto dx = sign(ex - bx);
         if (dx == 0) return;
@@ -203,7 +203,7 @@ void GlobalRouter::VMR(Point s, Point t, BoxCost& box) {
     }
 }
 
-void GlobalRouter::HMR(Point s, Point t, BoxCost& box) {
+void GlobalRouter::HMR_impl(Point s, Point t, BoxCost& box) {
     auto calc = [&](int x, int by, int ey) {
         auto dy = sign(ey - by);
         if (dy == 0) return;
@@ -240,6 +240,10 @@ void GlobalRouter::HMR(Point s, Point t, BoxCost& box) {
     }
 }
 
+void GlobalRouter::UM(TwoPin* twopin) {
+    // TODO
+}
+
 void GlobalRouter::HUM(TwoPin* twopin) {
     auto [it,insert] = boxs.try_emplace(twopin, twopin->from, twopin->to);
     auto& box = it->second;
@@ -251,7 +255,7 @@ void GlobalRouter::HUM(TwoPin* twopin) {
         box.R = std::min((int)width-1, box.R + d);
         box.U = std::min((int)height-1, box.U + d);
     }
-    return HUM(twopin->path, twopin->from, twopin->to, box);
+    return HUM_impl(twopin->path, twopin->from, twopin->to, box);
 }
 
 std::ostream& operator<<(std::ostream& os, GlobalRouter::BoxCost& box) {
@@ -268,12 +272,12 @@ std::ostream& operator<<(std::ostream& os, GlobalRouter::BoxCost& box) {
     return os;
 }
 
-void GlobalRouter::HUM(Path& path, Point f, Point t, Box box) {
+void GlobalRouter::HUM_impl(Path& path, Point f, Point t, Box box) {
     BoxCost CostVF(box), CostHF(box), CostVT(box), CostHT(box);
-    VMR(f, box.BL(), CostVF); VMR(f, box.UR(), CostVF);
-    HMR(f, box.BL(), CostHF); HMR(f, box.UR(), CostHF);
-    VMR(t, box.BL(), CostVT); VMR(t, box.UR(), CostVT);
-    HMR(t, box.BL(), CostHT); HMR(t, box.UR(), CostHT);
+    VMR_impl(f, box.BL(), CostVF); VMR_impl(f, box.UR(), CostVF);
+    HMR_impl(f, box.BL(), CostHF); HMR_impl(f, box.UR(), CostHF);
+    VMR_impl(t, box.BL(), CostVT); VMR_impl(t, box.UR(), CostVT);
+    HMR_impl(t, box.BL(), CostHT); HMR_impl(t, box.UR(), CostHT);
 #ifdef DEBUG
     //*
     std::cerr
@@ -328,15 +332,18 @@ void GlobalRouter::route(steady_clock::time_point end) {
         for (auto& twopin: net->twopin)
             twopins.emplace_back(&twopin);
     init();
-    pattern_routing();
-    auto tp = std::chrono::steady_clock::now();
-    for (k = 1; ; k++) {
-        std::cerr << "HUM_routing" _ k _ std::endl;
+    for (int i = 0; i < 1; i++, k++) {
+        routing("pattern_routing", i, &GlobalRouter::Lshape);
         if (check_overflow(true) == 0) break;
-        HUM_routing();
-        auto dur = sec_since(tp);
-        tp = std::chrono::steady_clock::now();
-        if (tp + std::chrono::seconds(int(dur * 1.1)) >= end)
+    }
+    for (int i = 0; i < 2; i++, k++) {
+        routing("UM_routing", i, &GlobalRouter::UM);
+        if (check_overflow(true) == 0) break;
+    }
+    for (int i = 0; ; i++, k++) {
+        auto duration = routing("HUM_routing", i, &GlobalRouter::HUM);
+        if (check_overflow(true) == 0) break;
+        if (std::chrono::steady_clock::now() + std::chrono::seconds(int(duration)) >= end)
             break;
     }
     // exit(-1);
@@ -490,51 +497,31 @@ int GlobalRouter::check_overflow(bool print) {
 
     if (print)
         std::cerr 
-            _ "tot overflow" _ totof _ std::endl
-            _ "mx overflow" _ mxof _ std::endl
-            _ "overflow" _ cnt _ "twopin" _ std::endl;
+            _ "  tot overflow" _ totof _ std::endl
+            _ "  mx overflow" _ mxof _ std::endl
+            _ "  of twopin" _ cnt _ std::endl;
     return totof;
 }
 
-void GlobalRouter::pattern_routing() {
+double GlobalRouter::routing(const char* name, int i, FP fp) {
     auto start = std::chrono::steady_clock::now();
-    for (k = 0; k < 2; k++) {
-        check_overflow();
-        std::sort(ALL(twopins), [&](auto a, auto b) {
-            return score(*a) < score(*b);
-        });
-        for (auto twopin: twopins)
-            if (twopin->overflow) {
-                ripup(twopin);
-                Lshape(twopin);
-                place(twopin);
-            }
-    }
-    std::cerr _ "pattern_routing" _ std::fixed << sec_since(start) << "s" << std::endl;
-}
-
-void GlobalRouter::HUM_routing() {
-    auto start = std::chrono::steady_clock::now();
-
     check_overflow();
     std::sort(ALL(twopins), [&](auto a, auto b) {
         return score(*a) > score(*b);
     });
     // std::shuffle(ALL(twopins), rng);
-
     for (auto twopin: twopins)
         if (twopin->overflow) {
             ripup(twopin);
-            HUM(twopin);
+            (this->*fp)(twopin);
             place(twopin);
         }
-
+    auto duration = sec_since(start);
+    std::cerr << "[*]" _ name _ i _ std::fixed << duration << "s" << std::endl;
 #ifdef DEBUG
     print_edges();
 #endif
-
-    std::cerr.precision(2);
-    std::cerr _ "HUM_routing" _ k _ std::fixed << sec_since(start) << "s" << std::endl;
+    return duration;
 }
 
 LayerAssignment::Graph* GlobalRouter::layer_assignment() {

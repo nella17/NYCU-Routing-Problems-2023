@@ -45,9 +45,9 @@ int main(int argc, char* const argv []) {
 
     GlobalRouter gr(
         ispdData,
-        { 7, 4, 150, 0.3, 30, 200, 30, 1 , 5, 30 }
+        { 7, 4, 150, 0.3, 30, 200, 30, 1 , 10, 5, 30 }
     );
-    gr.route(end - std::chrono::seconds(120));
+    gr.route(end - std::chrono::seconds(10));
 
     auto graph = gr.layer_assignment();
     // Output result

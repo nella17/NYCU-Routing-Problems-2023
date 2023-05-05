@@ -20,7 +20,7 @@ using std::chrono::steady_clock;
 
 class GlobalRouter {
 public:
-    static const size_t C_SIZE = 10;
+    static const size_t C_SIZE = 11;
 
     struct Edge {
         int cap, demand, he, of;
@@ -80,19 +80,21 @@ private:
     void place(TwoPin*);
 
     void Lshape(TwoPin*);
-    void Lshape(Path&, Point, Point);
+    void Lshape_impl(Path&, Point, Point);
 
-    void VMR(Point, Point, BoxCost&);
-    void HMR(Point, Point, BoxCost&);
+    void VMR_impl(Point, Point, BoxCost&);
+    void HMR_impl(Point, Point, BoxCost&);
+    void HUM_impl(Path&, Point, Point, Box);
+    void UM(TwoPin*);
     void HUM(TwoPin*);
-    void HUM(Path&, Point, Point, Box);
 
     void construct_2D_grid_graph();
     void net_decomposition();
     void init();
     int check_overflow(bool = false);
-    void pattern_routing();
-    void HUM_routing();
+
+    using FP = void (GlobalRouter::*)(TwoPin*);
+    double routing(const char*, int, FP);
 
     void print_edges();
 };
