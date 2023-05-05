@@ -332,21 +332,19 @@ void GlobalRouter::route(steady_clock::time_point end) {
         for (auto& twopin: net->twopin)
             twopins.emplace_back(&twopin);
     init();
-    for (int i = 0; i < 1; i++, k++) {
-        routing("pattern_routing", i, &GlobalRouter::Lshape);
-        if (check_overflow(true) == 0) break;
+    try {
+        routing("Lshape", &GlobalRouter::Lshape);
+        for (int i = 0; i < 2; i++)
+            routing("UM_routing", &GlobalRouter::UM, i);
+        for (int i = 0; ; i++) {
+            auto duration = routing("HUM_routing", &GlobalRouter::HUM, i);
+            if (std::chrono::steady_clock::now() + std::chrono::seconds(int(duration)) >= end)
+                break;
+        }
+    } catch (bool done) {
+        if (!done)
+            std::cerr _ ">>>> not finish <<<<" _ std::endl;
     }
-    for (int i = 0; i < 2; i++, k++) {
-        routing("UM_routing", i, &GlobalRouter::UM);
-        if (check_overflow(true) == 0) break;
-    }
-    for (int i = 0; ; i++, k++) {
-        auto duration = routing("HUM_routing", i, &GlobalRouter::HUM);
-        if (check_overflow(true) == 0) break;
-        if (std::chrono::steady_clock::now() + std::chrono::seconds(int(duration)) >= end)
-            break;
-    }
-    // exit(-1);
 }
 
 void GlobalRouter::construct_2D_grid_graph() {
@@ -470,10 +468,10 @@ void GlobalRouter::init() {
         edge.of = 0;
     for (auto twopin: twopins)
         twopin->reroute = 0;
-
+    check_overflow();
 }
 
-int GlobalRouter::check_overflow(bool print) {
+int GlobalRouter::check_overflow() {
     for (auto twopin: twopins)
         twopin->overflow = 0;
     int mxof = 0, totof = 0;
@@ -495,17 +493,16 @@ int GlobalRouter::check_overflow(bool print) {
         if (twopin->overflow)
             cnt++;
 
-    if (print)
-        std::cerr 
-            _ "  tot overflow" _ totof _ std::endl
-            _ "  mx overflow" _ mxof _ std::endl
-            _ "  of twopin" _ cnt _ std::endl;
+    std::cerr 
+        _ "  tot overflow" _ totof _ std::endl
+        _ "  mx overflow" _ mxof _ std::endl
+        _ "  of twopin" _ cnt _ std::endl;
     return totof;
 }
 
-double GlobalRouter::routing(const char* name, int i, FP fp) {
+double GlobalRouter::routing(const char* name, FP fp, int i) {
     auto start = std::chrono::steady_clock::now();
-    check_overflow();
+    k++;
     std::sort(ALL(twopins), [&](auto a, auto b) {
         return score(*a) > score(*b);
     });
@@ -518,6 +515,7 @@ double GlobalRouter::routing(const char* name, int i, FP fp) {
         }
     auto duration = sec_since(start);
     std::cerr << "[*]" _ name _ i _ std::fixed << duration << "s" << std::endl;
+    if (check_overflow() == 0) throw true;
 #ifdef DEBUG
     print_edges();
 #endif

@@ -91,10 +91,10 @@ private:
     void construct_2D_grid_graph();
     void net_decomposition();
     void init();
-    int check_overflow(bool = false);
+    int check_overflow();
 
     using FP = void (GlobalRouter::*)(TwoPin*);
-    double routing(const char*, int, FP);
+    double routing(const char*, FP, int = 0);
 
     void print_edges();
 };
