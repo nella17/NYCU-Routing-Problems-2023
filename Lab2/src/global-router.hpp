@@ -26,7 +26,7 @@ public:
 
 private:
     struct Edge {
-        int cap, demand, he /*, of*/;
+        int cap, demand, he, of;
         std::map<int, size_t> net;
         std::set<ISPDParser::TwoPin*> twopins;
         Edge(int);

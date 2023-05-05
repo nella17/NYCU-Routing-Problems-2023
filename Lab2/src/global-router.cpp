@@ -5,13 +5,14 @@
 #include <numeric>
 #include <queue>
 
-GlobalRouter::Edge::Edge(int _cap): cap(_cap), he(1), /*of(0),*/ net{}, twopins{} {}
+GlobalRouter::Edge::Edge(int _cap): cap(_cap), he(1), of(0), net{}, twopins{} {}
 
 void GlobalRouter::Edge::push(ISPDParser::TwoPin* twopin, int min_width, int min_spacing) {
     auto [it, insert] = net.try_emplace(twopin->parNet->id, 0);
     if (insert) it->second++;
     assert(twopins.emplace(twopin).second);
     demand += std::max(twopin->parNet->minimumWidth, min_width) + min_spacing;
+    of++;
 }
 
 void GlobalRouter::Edge::pop(ISPDParser::TwoPin* twopin, int min_width, int min_spacing) {
@@ -20,7 +21,6 @@ void GlobalRouter::Edge::pop(ISPDParser::TwoPin* twopin, int min_width, int min_
         net.erase(it);
     assert(twopins.erase(twopin));
     demand -= std::max(twopin->parNet->minimumWidth, min_width) + min_spacing;
-    he++;
 }
 
 ld GlobalRouter::cost(const Edge& e, int k) {
@@ -241,6 +241,9 @@ void GlobalRouter::pattern_routing() {
         Lshape(twopin, 0);
         place(twopin);
     }
+    for (auto edges: { &vedges, &hedges }) for (auto& edge: *edges) {
+        edge.of = 0;
+    }
 }
 
 int GlobalRouter::HUM_routing(int k) {
@@ -249,11 +252,13 @@ int GlobalRouter::HUM_routing(int k) {
 
     for (auto twopin: twopins)
         twopin->overflow = 0;
-    for (const auto& edges: { vedges, hedges })
-        for (const auto& edge: edges)
-            if (edge.demand > edge.cap)
-                for (auto twopin: edge.twopins)
-                    twopin->overflow++;
+    for (auto edges: { &vedges, &hedges }) for (auto& edge: *edges) {
+        edge.he += edge.of;
+        edge.of = 0;
+        if (edge.demand > edge.cap)
+            for (auto twopin: edge.twopins)
+                twopin->overflow++;
+    }
 
     int ripupcnt = 0;
     for (auto twopin: twopins)
