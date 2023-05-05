@@ -324,13 +324,14 @@ void GlobalRouter::route(steady_clock::time_point end) {
     for (auto net: ispdData->nets)
         for (auto& twopin: net->twopin)
             twopins.emplace_back(&twopin);
-    init_edges();
+    init();
     pattern_routing();
     for (k = 1; ; k++) {
+        std::cerr << "HUM_routing" _ k _ std::endl;
         if (std::chrono::steady_clock::now() >= end)
             break;
-        if (HUM_routing() < 10)
-            break;
+        HUM_routing();
+        if (check_overflow(true) < 10) break;
     }
     // exit(-1);
 }
@@ -418,7 +419,7 @@ void GlobalRouter::print_edges() {
     }
 }
 
-void GlobalRouter::init_edges() {
+void GlobalRouter::init() {
     auto verticalCapacity = std::accumulate(ALL(ispdData->verticalCapacity), 0);
     auto horizontalCapacity = std::accumulate(ALL(ispdData->horizontalCapacity), 0);
     vedges.assign(width * (height - 1), Edge(verticalCapacity));
@@ -438,11 +439,6 @@ void GlobalRouter::init_edges() {
         edge.cap -= layerCap - capacityAdj->reducedCapacityLevel;
         // std::cerr _ dx _ dy _ "/" _ lx _ ly _ "/" _ cong.cap _ layerCap _ std::endl;
     }
-}
-
-void GlobalRouter::pattern_routing() {
-    auto start = std::chrono::steady_clock::now();
-
     k = 0;
     for (auto twopin: twopins) {
         twopin->ripup = true;
@@ -451,18 +447,10 @@ void GlobalRouter::pattern_routing() {
     }
     for (auto twopin: twopins)
         place(twopin);
-    if (1)
-        std::sort(ALL(twopins), [&](auto a, auto b) {
-            return score(*a) < score(*b);
-        });
-    else
-        std::shuffle(ALL(twopins), rng);
+    std::shuffle(ALL(twopins), rng);
     for (auto twopin: twopins) {
         ripup(twopin);
-        if (1)
-            Lshape(twopin);
-        else // TODO
-            HUM(twopin);
+        Lshape(twopin);
         place(twopin);
     }
     for (auto edges: { &vedges, &hedges }) for (auto& edge: *edges)
@@ -470,56 +458,77 @@ void GlobalRouter::pattern_routing() {
     for (auto twopin: twopins)
         twopin->reroute = 0;
 
-    std::cerr _ "pattern_routing" _ std::fixed << sec_since(start) << "s" << std::endl;
 }
 
-int GlobalRouter::HUM_routing() {
-    // std::cerr _ "HUM_routing" _ k _ std::endl;
-    auto start = std::chrono::steady_clock::now();
-
+int GlobalRouter::check_overflow(bool print) {
     for (auto twopin: twopins)
         twopin->overflow = 0;
+    int mxof = 0, totof = 0;
     for (auto edges: { &vedges, &hedges }) for (auto& edge: *edges) {
         edge.he += edge.of;
         edge.of = 0;
         edge.overflow = edge.demand > edge.cap;
-        if (edge.overflow)
+        if (edge.overflow) {
+            auto of = edge.demand - edge.cap;
+            totof += of;
+            if (of > mxof) mxof = of;
             for (auto twopin: edge.twopins)
                 twopin->overflow++;
+        }
     }
 
+    int cnt = 0;
+    for (auto twopin: twopins)
+        if (twopin->overflow)
+            cnt++;
+
+    if (print)
+        std::cerr 
+            _ "tot overflow" _ totof _ std::endl
+            _ "mx overflow" _ mxof _ std::endl
+            _ "overflow" _ cnt _ "twopin" _ std::endl;
+    return totof;
+}
+
+void GlobalRouter::pattern_routing() {
+    auto start = std::chrono::steady_clock::now();
+    for (k = 0; k < 2; k++) {
+        check_overflow();
+        std::sort(ALL(twopins), [&](auto a, auto b) {
+            return score(*a) < score(*b);
+        });
+        for (auto twopin: twopins)
+            if (twopin->overflow) {
+                ripup(twopin);
+                Lshape(twopin);
+                place(twopin);
+            }
+    }
+    std::cerr _ "pattern_routing" _ std::fixed << sec_since(start) << "s" << std::endl;
+}
+
+void GlobalRouter::HUM_routing() {
+    auto start = std::chrono::steady_clock::now();
+
+    check_overflow();
     std::sort(ALL(twopins), [&](auto a, auto b) {
-        // if (a->ripup != b->ripup)
-        //     return a->ripup > b->ripup;
         return score(*a) > score(*b);
     });
     // std::shuffle(ALL(twopins), rng);
 
-    int ripupcnt = 0;
-    // double mxt = 0;
-    for (auto twopin: twopins)
-        if (twopin->overflow)
-            ripupcnt++;
-    std::cerr _ "ripup" _ ripupcnt _ "twopin" _ std::endl;
-
     for (auto twopin: twopins)
         if (twopin->overflow) {
-    // auto begin = std::chrono::steady_clock::now();
             ripup(twopin);
             HUM(twopin);
             place(twopin);
-    // mxt = std::max(mxt, sec_since(begin));
         }
 
-    // std::cerr _ "max HUM" _ mxt _ "s\n";
 #ifdef DEBUG
     print_edges();
 #endif
 
     std::cerr.precision(2);
     std::cerr _ "HUM_routing" _ k _ std::fixed << sec_since(start) << "s" << std::endl;
-
-    return ripupcnt;
 }
 
 LayerAssignment::Graph* GlobalRouter::layer_assignment() {

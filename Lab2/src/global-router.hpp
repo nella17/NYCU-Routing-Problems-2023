@@ -89,9 +89,10 @@ private:
 
     void construct_2D_grid_graph();
     void net_decomposition();
-    void init_edges();
+    void init();
+    int check_overflow(bool = false);
     void pattern_routing();
-    int HUM_routing();
+    void HUM_routing();
 
     void print_edges();
 };
