@@ -45,34 +45,6 @@ int main(int argc, char* const argv []) {
     );
     gr.route(timeLimitSec);
 
-    // Describe the usage of the given layer assignment algorithm
-    // Only works for the given input file "3d.txt"
-    if ( std::string(inputFile).find("3d.txt") != std::string::npos) {
-        ISPDParser::Net *net = ispdData->nets[0];
-        // Decompose multi-pin nets into two-pin nets
-        // Since there are only 2 pins in the given net, this step is trivial
-        net->twopin.push_back(ISPDParser::TwoPin());
-        ISPDParser::TwoPin &twoPin = net->twopin.back();
-        twoPin.from = net->pin2D[0];
-        twoPin.to   = net->pin2D[1];
-
-        // Assume the two pin net is routed
-        // The following code is to assign routing paths to the two-pin net
-        // The routing path is a sequence of routing segments
-        // For a horizontal segment, the start point is the left grid coordinate
-        // For a vertical segment, the start point is the bottom grid coordinate
-        // Please check the figures in https://www.ispd.cc/contests/08/3d.pdf
-        twoPin.parNet = net;
-        twoPin.path.emplace_back(0, 0, true);
-        twoPin.path.emplace_back(1, 0, false);
-        twoPin.path.emplace_back(0, 1, true);
-        twoPin.path.emplace_back(0, 1, false);
-        twoPin.path.emplace_back(0, 2, true);
-        twoPin.path.emplace_back(1, 2, true);
-        twoPin.path.emplace_back(2, 1, false);
-        twoPin.path.emplace_back(2, 0, false);
-    }
-
     auto graph = gr.layer_assignment();
     // Output result
     graph->output3Dresult(outputFile);
