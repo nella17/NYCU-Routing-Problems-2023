@@ -19,14 +19,6 @@ class GlobalRouter {
 public:
     static const size_t C_SIZE = 10;
 
-    ISPDParser::ispdData* const ispdData;
-    const std::array<ld, C_SIZE> C;
-    GlobalRouter(ISPDParser::ispdData*, std::array<ld, C_SIZE>);
-
-    void route(int);
-    LayerAssignment::Graph* layer_assignment();
-
-private:
     struct Edge {
         int cap, demand, he, of;
         bool overflow;
@@ -51,6 +43,14 @@ private:
         ld& operator()(int,int);
     };
 
+    ISPDParser::ispdData* const ispdData;
+    const std::array<ld, C_SIZE> C;
+    GlobalRouter(ISPDParser::ispdData*, std::array<ld, C_SIZE>);
+
+    void route(int);
+    LayerAssignment::Graph* layer_assignment();
+
+private:
     int k;
     size_t width, height;
     int min_width, min_spacing;
