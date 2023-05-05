@@ -251,7 +251,11 @@ void GlobalRouter::HMR_impl(Point s, Point t, BoxCost& box) {
     }
 }
 
-void GlobalRouter::UM(TwoPin* twopin) {
+void GlobalRouter::Zshape(TwoPin* twopin) {
+    // TODO
+}
+
+void GlobalRouter::monotonic(TwoPin* twopin) {
     // TODO
 }
 
@@ -346,13 +350,11 @@ void GlobalRouter::route(steady_clock::time_point end) {
     try {
         routing("Lshape", &GlobalRouter::Lshape);
         // TODO: Zshape
-        // for (int i = 0; i < 2; i++)
-        //     routing("UM_routing", &GlobalRouter::UM, i);
-        for (int i = 0; ; i++) {
-            auto duration = routing("HUM_routing", &GlobalRouter::HUM, i);
-            if (std::chrono::steady_clock::now() + std::chrono::seconds(int(duration)) >= end)
-                break;
-        }
+        // TODO: monotonic
+        routing("HUM", &GlobalRouter::HUM, INT_MAX);
+        // TODO: timer
+        // if (std::chrono::steady_clock::now() + std::chrono::seconds(int(duration)) >= end)
+        //     break;
     } catch (bool done) {
         if (!done)
             std::cerr _ ">>>> not finish <<<<" _ std::endl;
@@ -443,6 +445,8 @@ void GlobalRouter::print_edges() {
 }
 
 void GlobalRouter::init() {
+    std::cerr << "[*]" _ "init" _ std::endl;
+    auto start = std::chrono::steady_clock::now();
     auto verticalCapacity = std::accumulate(ALL(ispdData->verticalCapacity), 0);
     auto horizontalCapacity = std::accumulate(ALL(ispdData->horizontalCapacity), 0);
     vedges.assign(width * (height - 1), Edge(verticalCapacity));
@@ -485,6 +489,7 @@ void GlobalRouter::init() {
         edge.of = 0;
     for (auto twopin: twopins)
         twopin->reroute = 0;
+    std::cerr _ "time" _ sec_since(start) << 's';
     check_overflow();
 }
 
@@ -521,28 +526,27 @@ int GlobalRouter::check_overflow() {
     return totof;
 }
 
-double GlobalRouter::routing(const char* name, FP fp, int i) {
+void GlobalRouter::routing(const char* name, FP fp, int iteration) {
+    std::cerr << "[*]" _ name _ "routing" << std::endl;
     auto start = std::chrono::steady_clock::now();
-    k++;
-    for (auto twopin: twopins)
-        twopin->cost = cost(twopin);
-    std::sort(ALL(twopins), [&](auto a, auto b) {
-        return score(*a) > score(*b);
-    });
-    // std::shuffle(ALL(twopins), rng);
-    for (auto twopin: twopins)
-        if (twopin->overflow) {
-            ripup(twopin);
-            (this->*fp)(twopin);
-            place(twopin);
-        }
-    auto duration = sec_since(start);
-    std::cerr << "[*]" _ name _ i _ std::fixed << duration << "s" << std::endl;
-    if (check_overflow() == 0) throw true;
-#ifdef DEBUG
-    print_edges();
-#endif
-    return duration;
+    for (int i = 1; i <= iteration; i++, k++) {
+        auto iterstart = std::chrono::steady_clock::now();
+        for (auto twopin: twopins)
+            twopin->cost = cost(twopin);
+        std::sort(ALL(twopins), [&](auto a, auto b) {
+            return score(*a) > score(*b);
+        });
+        // std::shuffle(ALL(twopins), rng);
+        for (auto twopin: twopins)
+            if (twopin->overflow) {
+                ripup(twopin);
+                (this->*fp)(twopin);
+                place(twopin);
+            }
+        std::cerr _ i _ " time" _ sec_since(iterstart) << 's';
+        if (check_overflow() == 0) throw true;
+    }
+    std::cerr _ name _ "routing costs" _ sec_since(start) << "s\n" << std::endl;
 }
 
 LayerAssignment::Graph* GlobalRouter::layer_assignment() {

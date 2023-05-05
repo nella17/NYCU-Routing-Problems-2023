@@ -84,10 +84,13 @@ private:
     void Lshape(TwoPin*);
     void Lshape_impl(Path&, Point, Point);
 
+    void Zshape(TwoPin*);
+
+    void monotonic(TwoPin*);
+
     void VMR_impl(Point, Point, BoxCost&);
     void HMR_impl(Point, Point, BoxCost&);
     void HUM_impl(Path&, Point, Point, Box);
-    void UM(TwoPin*);
     void HUM(TwoPin*);
 
     void construct_2D_grid_graph();
@@ -96,7 +99,7 @@ private:
     int check_overflow();
 
     using FP = void (GlobalRouter::*)(TwoPin*);
-    double routing(const char*, FP, int = 0);
+    void routing(const char*, FP, int = 1);
 
     void print_edges();
 };
