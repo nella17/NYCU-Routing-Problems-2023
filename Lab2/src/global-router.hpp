@@ -13,6 +13,8 @@
 
 #include "utils.hpp"
 
+using namespace ISPDParser;
+
 class GlobalRouter {
 public:
     static const size_t C_SIZE = 10;
@@ -28,32 +30,32 @@ private:
     struct Edge {
         int cap, demand, he, of;
         std::map<int, size_t> net;
-        std::set<ISPDParser::TwoPin*> twopins;
+        std::set<TwoPin*> twopins;
         Edge(int);
-        void push(ISPDParser::TwoPin*, int, int);
-        void pop (ISPDParser::TwoPin*, int, int);
+        void push(TwoPin*, int, int);
+        void pop (TwoPin*, int, int);
     };
 
     struct Box {
         int L, R, U, D;
-        std::array<ISPDParser::Point,4> points() const;
+        std::array<Point,4> points() const;
     };
 
     ld cost(const Edge&, int);
-    ld score(const ISPDParser::TwoPin&);
-    int delta(const ISPDParser::TwoPin&);
+    ld score(const TwoPin&);
+    int delta(const TwoPin&);
 
     size_t width, height;
     int min_width, min_spacing;
     std::vector<Edge> vedges, hedges;
     Edge& getEdge(int, int, bool);
 
-    std::vector<ISPDParser::TwoPin*> twopins;
-    void ripup(ISPDParser::TwoPin*);
-    void place(ISPDParser::TwoPin*);
+    std::vector<TwoPin*> twopins;
+    void ripup(TwoPin*);
+    void place(TwoPin*);
 
-    ISPDParser::Path Lshape(ISPDParser::Point, ISPDParser::Point, int);
-    ISPDParser::Path HUM(ISPDParser::Point, ISPDParser::Point, int);
+    Path Lshape(Point, Point, int);
+    Path HUM(Point, Point, int);
 
     void construct_2D_grid_graph();
     void net_decomposition();

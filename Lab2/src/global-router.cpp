@@ -7,7 +7,7 @@
 
 GlobalRouter::Edge::Edge(int _cap): cap(_cap), he(1), of(0), net{}, twopins{} {}
 
-void GlobalRouter::Edge::push(ISPDParser::TwoPin* twopin, int min_width, int min_spacing) {
+void GlobalRouter::Edge::push(TwoPin* twopin, int min_width, int min_spacing) {
     auto [it, insert] = net.try_emplace(twopin->parNet->id, 0);
     if (insert) it->second++;
     assert(twopins.emplace(twopin).second);
@@ -15,7 +15,7 @@ void GlobalRouter::Edge::push(ISPDParser::TwoPin* twopin, int min_width, int min
     of++;
 }
 
-void GlobalRouter::Edge::pop(ISPDParser::TwoPin* twopin, int min_width, int min_spacing) {
+void GlobalRouter::Edge::pop(TwoPin* twopin, int min_width, int min_spacing) {
     auto it = net.find(twopin->parNet->id);
     if (--it->second == 0)
         net.erase(it);
@@ -23,12 +23,12 @@ void GlobalRouter::Edge::pop(ISPDParser::TwoPin* twopin, int min_width, int min_
     demand -= std::max(twopin->parNet->minimumWidth, min_width) + min_spacing;
 }
 
-std::array<ISPDParser::Point,4> GlobalRouter::Box::points() const {
+std::array<Point,4> GlobalRouter::Box::points() const {
     return {
-        ISPDParser::Point(L, U),
-        ISPDParser::Point(R, U),
-        ISPDParser::Point(L, D),
-        ISPDParser::Point(R, D),
+        Point(L, U),
+        Point(R, U),
+        Point(L, D),
+        Point(R, D),
     };
 }
 
@@ -39,11 +39,11 @@ ld GlobalRouter::cost(const Edge& e, int k) {
     return (1 + dah) * pe + be;
 }
 
-ld GlobalRouter::score(const ISPDParser::TwoPin& twopin) {
+ld GlobalRouter::score(const TwoPin& twopin) {
     return C[6] * twopin.overflow + C[7] * twopin.wlen();
 }
 
-int GlobalRouter::delta(const ISPDParser::TwoPin& twopin) {
+int GlobalRouter::delta(const TwoPin& twopin) {
     return (int)C[8] + (int)C[9] / twopin.reroute;
 }
 
@@ -58,7 +58,7 @@ GlobalRouter::Edge& GlobalRouter::getEdge(int x, int y, bool hori) {
 GlobalRouter::GlobalRouter(ISPDParser::ispdData* _ispdData, std::array<ld, C_SIZE> _C): 
     ispdData(_ispdData), C(_C) {}
 
-void GlobalRouter::ripup(ISPDParser::TwoPin* twopin) {
+void GlobalRouter::ripup(TwoPin* twopin) {
     assert(!twopin->ripup);
     twopin->ripup = true;
     twopin->reroute++;
@@ -66,14 +66,14 @@ void GlobalRouter::ripup(ISPDParser::TwoPin* twopin) {
         getEdge(rp.x, rp.y, rp.hori).pop(twopin, min_width, min_spacing);
 }
 
-void GlobalRouter::place(ISPDParser::TwoPin* twopin) {
+void GlobalRouter::place(TwoPin* twopin) {
     assert(twopin->ripup);
     twopin->ripup = false;
     for (auto rp: twopin->path)
         getEdge(rp.x, rp.y, rp.hori).push(twopin, min_width, min_spacing);
 }
 
-ISPDParser::Path GlobalRouter::Lshape(ISPDParser::Point f, ISPDParser::Point t, int k) {
+Path GlobalRouter::Lshape(Point f, Point t, int k) {
     auto Lx = [&](int y, int lx, int rx, auto func) {
         if (lx > rx) std::swap(lx, rx);
         for (auto x = lx; x < rx; x++)
@@ -84,7 +84,7 @@ ISPDParser::Path GlobalRouter::Lshape(ISPDParser::Point f, ISPDParser::Point t, 
         for (auto y = ly; y < ry; y++)
             func(x, y, 0);
     };
-    auto L = [&](ISPDParser::Point p1, ISPDParser::Point p2, auto func) {
+    auto L = [&](Point p1, Point p2, auto func) {
         // std::cerr _ "L" _ p1 _ p2 _ std::endl;
         if (p1.x == p2.x) return Ly(p1.x, p1.y, p2.y, func);
         if (p1.y == p2.y) return Lx(p1.y, p1.x, p2.x, func);
@@ -93,7 +93,7 @@ ISPDParser::Path GlobalRouter::Lshape(ISPDParser::Point f, ISPDParser::Point t, 
     if (f.y > t.y) std::swap(f, t);
     if (f.x > t.x) std::swap(f, t);
 
-    auto Lcost = [&](ISPDParser::Point m) {
+    auto Lcost = [&](Point m) {
         ld c = 0;
         auto func = [&](int x, int y, bool hori) {
             c += cost(getEdge(x, y, hori), k);
@@ -103,12 +103,12 @@ ISPDParser::Path GlobalRouter::Lshape(ISPDParser::Point f, ISPDParser::Point t, 
         return c;
     };
 
-    ISPDParser::Point m1(f.x, t.y), m2(t.x, f.y);
+    Point m1(f.x, t.y), m2(t.x, f.y);
     auto c1 = Lcost(m1), c2 = Lcost(m2);
 
     auto m = (c1 != c2 ? c1 < c2 : randint(2))  ? m1 : m2;
 
-    ISPDParser::Path path{};
+    Path path{};
     auto func = [&](int x, int y, bool hori) {
         path.emplace_back(x, y, hori);
     };
@@ -116,8 +116,8 @@ ISPDParser::Path GlobalRouter::Lshape(ISPDParser::Point f, ISPDParser::Point t, 
     return path;
 }
 
-ISPDParser::Path GlobalRouter::HUM(ISPDParser::Point f, ISPDParser::Point t, int k) {
-    ISPDParser::Path path{};
+Path GlobalRouter::HUM(Point f, Point t, int k) {
+    Path path{};
     return path;
 }
 
@@ -140,7 +140,7 @@ void GlobalRouter::construct_2D_grid_graph() {
     // Convert XY coordinates to grid coordinates
     // Delete nets that have more than 1000 sinks
     // Delete nets that have all pins inside the same tile
-    ispdData->nets.erase(std::remove_if(ALL(ispdData->nets), [&](ISPDParser::Net *net) {
+    ispdData->nets.erase(std::remove_if(ALL(ispdData->nets), [&](Net *net) {
 
         for (auto &_pin : net->pins) {
 
