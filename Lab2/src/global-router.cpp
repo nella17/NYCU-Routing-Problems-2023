@@ -60,6 +60,13 @@ RPoint GlobalRouter::make(Point f, Point t) {
     __builtin_unreachable();
 }
 
+ld GlobalRouter::cost(TwoPin* twopin)  {
+    ld c = 0;
+    for (auto rp: twopin->path)
+        c += cost(rp);
+    return c;
+}
+
 ld GlobalRouter::cost(Point f, Point t) {
     auto dx = std::abs(f.x - t.x);
     auto dy = std::abs(f.y - t.y);
@@ -68,6 +75,10 @@ ld GlobalRouter::cost(Point f, Point t) {
     if (dx == 0 and dy == 1)
         return cost(f.x, std::min(f.y, t.y), 0);
     return INFINITY;
+}
+
+ld GlobalRouter::cost(RPoint rp) {
+    return cost(getEdge(rp));
 }
 
 ld GlobalRouter::cost(int x, int y, bool hori) {
@@ -83,7 +94,7 @@ ld GlobalRouter::cost(const Edge& e) const {
 }
 
 ld GlobalRouter::score(const TwoPin& twopin) const {
-    return C[6] * twopin.overflow + C[7] * twopin.wlen() + C[8] * twopin.reroute;
+    return C[6] * twopin.overflow + C[7] * twopin.cost + C[8] * twopin.reroute;
 }
 
 int GlobalRouter::delta(const TwoPin& twopin) const {
@@ -334,8 +345,9 @@ void GlobalRouter::route(steady_clock::time_point end) {
     init();
     try {
         routing("Lshape", &GlobalRouter::Lshape);
-        for (int i = 0; i < 2; i++)
-            routing("UM_routing", &GlobalRouter::UM, i);
+        // TODO: Zshape
+        // for (int i = 0; i < 2; i++)
+        //     routing("UM_routing", &GlobalRouter::UM, i);
         for (int i = 0; ; i++) {
             auto duration = routing("HUM_routing", &GlobalRouter::HUM, i);
             if (std::chrono::steady_clock::now() + std::chrono::seconds(int(duration)) >= end)
@@ -458,7 +470,12 @@ void GlobalRouter::init() {
     }
     for (auto twopin: twopins)
         place(twopin);
-    std::shuffle(ALL(twopins), rng);
+    for (auto twopin: twopins)
+        twopin->cost = cost(twopin);
+    std::sort(ALL(twopins), [&](auto a, auto b) {
+        return a->cost < b->cost;
+    });
+    // std::shuffle(ALL(twopins), rng);
     for (auto twopin: twopins) {
         ripup(twopin);
         Lshape(twopin);
@@ -488,21 +505,27 @@ int GlobalRouter::check_overflow() {
         }
     }
 
-    int cnt = 0;
-    for (auto twopin: twopins)
+    int cnt = 0, wl = 0;
+    for (auto twopin: twopins) {
+        wl += twopin->wlen();
         if (twopin->overflow)
             cnt++;
+    }
 
     std::cerr 
-        _ "  tot overflow" _ totof _ std::endl
-        _ "  mx overflow" _ mxof _ std::endl
-        _ "  of twopin" _ cnt _ std::endl;
+        _ "  tot overflow" _ totof
+        _ "  mx overflow" _ mxof
+        _ "  wirelength" _ wl
+        _ "  of twopin" _ cnt
+        _ std::endl;
     return totof;
 }
 
 double GlobalRouter::routing(const char* name, FP fp, int i) {
     auto start = std::chrono::steady_clock::now();
     k++;
+    for (auto twopin: twopins)
+        twopin->cost = cost(twopin);
     std::sort(ALL(twopins), [&](auto a, auto b) {
         return score(*a) > score(*b);
     });

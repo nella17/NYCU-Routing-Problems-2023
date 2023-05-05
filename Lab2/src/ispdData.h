@@ -225,6 +225,7 @@ struct TwoPin
     int overflow;
     bool ripup;
     int reroute;
+    long double cost;
     Path path;
 
     TwoPin(): TwoPin(Point(), Point()) {}
@@ -235,7 +236,9 @@ struct TwoPin
         parNet(p),
         overflow(0),
         ripup(false),
-        reroute(0)
+        reroute(0),
+        cost(0),
+        path{}
     {}
 
     int HPWL() const {

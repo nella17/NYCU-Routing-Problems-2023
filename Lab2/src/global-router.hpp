@@ -67,7 +67,9 @@ private:
     std::vector<TwoPin*> twopins;
 
     RPoint make(Point, Point);
+    ld cost(TwoPin*);
     ld cost(Point, Point);
+    ld cost(RPoint);
     ld cost(int, int, bool);
     ld cost(const Edge&) const;
     ld score(const TwoPin&) const;
