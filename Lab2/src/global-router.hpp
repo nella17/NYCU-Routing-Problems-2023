@@ -10,6 +10,7 @@
 #include <array>
 #include <vector>
 #include <map>
+#include <unordered_set>
 #include <optional>
 
 #include "utils.hpp"
@@ -24,8 +25,8 @@ public:
     struct Edge {
         int cap, demand, he, of;
         bool overflow;
-        std::map<int, size_t> net;
-        std::set<TwoPin*> twopins;
+        std::unordered_map<int, size_t> net;
+        std::unordered_set<TwoPin*> twopins;
         Edge(int);
         void push(TwoPin*, int, int);
         void pop (TwoPin*, int, int);
@@ -62,7 +63,7 @@ private:
     size_t width, height;
     int min_width, min_spacing;
     std::vector<Edge> vedges, hedges;
-    std::map<TwoPin*, Box> boxs;
+    std::unordered_map<TwoPin*, Box> boxs;
 
     RPoint make(Point, Point);
     ld cost(Point, Point);
