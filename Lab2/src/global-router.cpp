@@ -70,7 +70,7 @@ ld GlobalRouter::cost(int x, int y, bool hori) {
 }
 
 ld GlobalRouter::cost(const Edge& e) const {
-    // return e.demand - e.cap + 1;
+    // return std::exp(std::max(0, e.demand - e.cap + 1) * 2);
     auto dah = e.he / (C[0] + C[1] * std::sqrt(k));
     auto pe = 1 + C[2] / (1 + std::exp(C[3] * (e.cap - e.demand)));
     auto be = C[4] + C[5] / std::pow(2, k);
@@ -240,9 +240,13 @@ Path GlobalRouter::HUM(TwoPin* twopin) {
     auto [it,insert] = boxs.try_emplace(twopin, twopin->from, twopin->to);
     auto& box = it->second;
     if (!insert) {
-        // TODO: box expendsion
+        // TODO: box expansion
+        auto d = delta(*twopin);
+        box.L = std::max(0, box.L - d);
+        box.B = std::max(0, box.B - d);
+        box.R = std::min((int)width-1, box.R + d);
+        box.U = std::min((int)height-1, box.U + d);
     }
-    // box.U = 2;
     return HUM(twopin->from, twopin->to, box);
 }
 
@@ -266,13 +270,15 @@ Path GlobalRouter::HUM(Point f, Point t, Box box) {
     HMR(f, box.BL(), CostHF); HMR(f, box.UR(), CostHF);
     VMR(t, box.BL(), CostVT); VMR(t, box.UR(), CostVT);
     HMR(t, box.BL(), CostHT); HMR(t, box.UR(), CostHT);
-    /*
+#ifdef DEBUG
+    //*
     std::cerr
         _ "CostVF\n" << CostVF
         _ "CostHF\n" << CostHF
         _ "CostVT\n" << CostVT
         _ "CostHT\n" << CostHT
         ; //*/
+#endif
     auto calc = [&](int x, int y) {
         auto cs = std::min(CostVF(x,y).cost, CostHF(x,y).cost);
         auto ct = std::min(CostVT(x,y).cost, CostHT(x,y).cost);
@@ -314,7 +320,7 @@ Path GlobalRouter::HUM(Point f, Point t, Box box) {
     return path;
 }
 
-void GlobalRouter::route(int timeLimitSec) {
+void GlobalRouter::route(steady_clock::time_point end) {
     construct_2D_grid_graph();
     net_decomposition();
     for (auto net: ispdData->nets)
@@ -322,8 +328,12 @@ void GlobalRouter::route(int timeLimitSec) {
             twopins.emplace_back(&twopin);
     init_congestion();
     pattern_routing();
-    for (k = 1; k <= 10; k++)
-        HUM_routing();
+    for (k = 1; ; k++) {
+        if (std::chrono::steady_clock::now() >= end)
+            break;
+        if (HUM_routing() == 0)
+            break;
+    }
     // exit(-1);
 }
 
@@ -477,25 +487,30 @@ int GlobalRouter::HUM_routing() {
                 twopin->overflow++;
     }
 
-    int ripupcnt = 0;
-    for (auto twopin: twopins)
-        if (twopin->overflow)
-            ripup(twopin), ripupcnt++;
-    std::cerr _ "ripup" _ ripupcnt _ "twopin" _ std::endl;
-    // print_congestion();
-
     std::sort(ALL(twopins), [&](auto a, auto b) {
-        if (a->ripup != b->ripup)
-            return a->ripup > b->ripup;
+        // if (a->ripup != b->ripup)
+        //     return a->ripup > b->ripup;
         return score(*a) > score(*b);
     });
     // std::shuffle(ALL(twopins), rng);
-    for (auto twopin: twopins) {
-        if (twopin->ripup) {
+
+    int ripupcnt = 0;
+    // double mxt = 0;
+
+    for (auto twopin: twopins)
+        if (twopin->overflow) {
+    // auto begin = std::chrono::steady_clock::now();
+            ripup(twopin), ripupcnt++;
             twopin->path = HUM(twopin);
             place(twopin);
+    // mxt = std::max(mxt, sec_since(begin));
         }
-    }
+
+    // std::cerr _ "max HUM" _ mxt _ "s\n";
+    std::cerr _ "ripup" _ ripupcnt _ "twopin" _ std::endl;
+#ifdef DEBUG
+    print_congestion();
+#endif
 
     std::cerr.precision(2);
     std::cerr _ "HUM_routing" _ k _ std::fixed << sec_since(start) << "s" << std::endl;

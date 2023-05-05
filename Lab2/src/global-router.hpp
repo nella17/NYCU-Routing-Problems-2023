@@ -14,6 +14,7 @@
 #include "utils.hpp"
 
 using namespace ISPDParser;
+using std::chrono::steady_clock;
 
 class GlobalRouter {
 public:
@@ -52,7 +53,7 @@ public:
     const std::array<ld, C_SIZE> C;
     GlobalRouter(ISPDParser::ispdData*, std::array<ld, C_SIZE>);
 
-    void route(int);
+    void route(steady_clock::time_point);
     LayerAssignment::Graph* layer_assignment();
 
 private:

@@ -37,13 +37,16 @@ int main(int argc, char* const argv []) {
     auto outputFile = argv[2];
     auto timeLimitSec = argc < 4 ? 60 * 30 : atoi(argv[3]);
 
+    auto start = std::chrono::steady_clock::now();
+    auto end = start + std::chrono::seconds(timeLimitSec);
+
     auto ispdData = parse_input(inputFile);
 
     GlobalRouter gr(
         ispdData,
         { 7, 4, 150, 0.3, 30, 200, 30, 1 , 5, 30 }
     );
-    gr.route(timeLimitSec);
+    gr.route(end - std::chrono::seconds(120));
 
     auto graph = gr.layer_assignment();
     // Output result
