@@ -14,6 +14,8 @@ struct TwoPin;
 struct RPoint;
 struct Point;
 
+using Path = std::vector<RPoint>;
+
 class Net {
 
 public:
@@ -215,8 +217,8 @@ struct TwoPin
     Net *parNet;
     int overflow;
     bool ripup;
-    bool reroute;
-    std::vector<RPoint> path;
+    int reroute;
+    Path path;
 
     TwoPin(): TwoPin(Point(), Point()) {}
 
@@ -226,7 +228,7 @@ struct TwoPin
         parNet(p),
         overflow(0),
         ripup(false),
-        reroute(true)
+        reroute(0)
     {}
 
     int HPWL() const {

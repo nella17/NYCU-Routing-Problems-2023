@@ -41,7 +41,7 @@ int main(int argc, char* const argv []) {
 
     GlobalRouter gr(
         ispdData,
-        { 7, 4, 150, 0.3, 30, 200, 30, 1 }
+        { 7, 4, 150, 0.3, 30, 200, 30, 1 , 5, 30 }
     );
     gr.route(timeLimitSec);
 

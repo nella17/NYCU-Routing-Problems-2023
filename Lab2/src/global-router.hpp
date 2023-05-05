@@ -15,7 +15,7 @@
 
 class GlobalRouter {
 public:
-    static const size_t C_SIZE = 8;
+    static const size_t C_SIZE = 10;
 
     ISPDParser::ispdData* const ispdData;
     const std::array<ld, C_SIZE> C;
@@ -33,8 +33,15 @@ private:
         void push(ISPDParser::TwoPin*, int, int);
         void pop (ISPDParser::TwoPin*, int, int);
     };
+
+    struct Box {
+        int L, R, U, D;
+        std::array<ISPDParser::Point,4> points() const;
+    };
+
     ld cost(const Edge&, int);
     ld score(const ISPDParser::TwoPin&);
+    int delta(const ISPDParser::TwoPin&);
 
     size_t width, height;
     int min_width, min_spacing;
@@ -45,8 +52,8 @@ private:
     void ripup(ISPDParser::TwoPin*);
     void place(ISPDParser::TwoPin*);
 
-    void Lshape(ISPDParser::TwoPin*, int);
-    void HUM(ISPDParser::TwoPin*, int);
+    ISPDParser::Path Lshape(ISPDParser::Point, ISPDParser::Point, int);
+    ISPDParser::Path HUM(ISPDParser::Point, ISPDParser::Point, int);
 
     void construct_2D_grid_graph();
     void net_decomposition();
