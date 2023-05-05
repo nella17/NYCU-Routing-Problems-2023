@@ -454,8 +454,9 @@ void GlobalRouter::pattern_routing() {
         twopin->ripup = true;
         Lshape(twopin);
         // std::cerr _ *twopin _ std::endl;
-        place(twopin);
     }
+    for (auto twopin: twopins)
+        place(twopin);
     if (1)
         std::sort(ALL(twopins), [&](auto a, auto b) {
             return score(*a) < score(*b);
