@@ -318,7 +318,7 @@ void GlobalRouter::HUM_impl(Path& path, Point f, Point t, Box box) {
         Point pp(mx, my);
         while (true) {
             auto ocp = cost(pp).from;
-            if (path.size() > 1000) {
+            if (path.size() > width * height) {
                 std::cerr _ "path ????" _ std::endl;
                 exit(-1);
             }
