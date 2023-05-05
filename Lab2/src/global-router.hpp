@@ -78,13 +78,13 @@ private:
     void ripup(TwoPin*);
     void place(TwoPin*);
 
-    Path Lshape(TwoPin*);
-    Path Lshape(Point, Point);
+    void Lshape(TwoPin*);
+    void Lshape(Path&, Point, Point);
 
     void VMR(Point, Point, BoxCost&);
     void HMR(Point, Point, BoxCost&);
-    Path HUM(TwoPin*);
-    Path HUM(Point, Point, Box);
+    void HUM(TwoPin*);
+    void HUM(Path&, Point, Point, Box);
 
     void construct_2D_grid_graph();
     void net_decomposition();

@@ -117,11 +117,11 @@ void GlobalRouter::place(TwoPin* twopin) {
         getEdge(rp).push(twopin, min_width, min_spacing);
 }
 
-Path GlobalRouter::Lshape(TwoPin* twopin) {
-    return Lshape(twopin->from, twopin->to);
+void GlobalRouter::Lshape(TwoPin* twopin) {
+    return Lshape(twopin->path, twopin->from, twopin->to);
 }
 
-Path GlobalRouter::Lshape(Point f, Point t) {
+void GlobalRouter::Lshape(Path& path, Point f, Point t) {
     auto Lx = [&](int y, int L, int R, auto func) {
         if (L > R) std::swap(L, R);
         for (auto x = L; x < R; x++)
@@ -156,12 +156,11 @@ Path GlobalRouter::Lshape(Point f, Point t) {
 
     auto m = (c1 != c2 ? c1 < c2 : randint(2))  ? m1 : m2;
 
-    Path path{};
+    path.clear();
     auto func = [&](int x, int y, bool hori) {
         path.emplace_back(x, y, hori);
     };
     L(f, m, func); L(m, t, func);
-    return path;
 }
 
 void GlobalRouter::VMR(Point s, Point t, BoxCost& box) {
@@ -238,7 +237,7 @@ void GlobalRouter::HMR(Point s, Point t, BoxCost& box) {
     }
 }
 
-Path GlobalRouter::HUM(TwoPin* twopin) {
+void GlobalRouter::HUM(TwoPin* twopin) {
     auto [it,insert] = boxs.try_emplace(twopin, twopin->from, twopin->to);
     auto& box = it->second;
     if (!insert) {
@@ -249,7 +248,7 @@ Path GlobalRouter::HUM(TwoPin* twopin) {
         box.R = std::min((int)width-1, box.R + d);
         box.U = std::min((int)height-1, box.U + d);
     }
-    return HUM(twopin->from, twopin->to, box);
+    return HUM(twopin->path, twopin->from, twopin->to, box);
 }
 
 std::ostream& operator<<(std::ostream& os, GlobalRouter::BoxCost& box) {
@@ -266,7 +265,7 @@ std::ostream& operator<<(std::ostream& os, GlobalRouter::BoxCost& box) {
     return os;
 }
 
-Path GlobalRouter::HUM(Point f, Point t, Box box) {
+void GlobalRouter::HUM(Path& path, Point f, Point t, Box box) {
     BoxCost CostVF(box), CostHF(box), CostVT(box), CostHT(box);
     VMR(f, box.BL(), CostVF); VMR(f, box.UR(), CostVF);
     HMR(f, box.BL(), CostHF); HMR(f, box.UR(), CostHF);
@@ -295,7 +294,7 @@ Path GlobalRouter::HUM(Point f, Point t, Box box) {
         // std::cerr << c << " \n"[y==box.U];
     }
     // std::cerr _ mx _ my _ std::endl;
-    Path path{};
+    path.clear();
     auto trace = [&](BoxCost& CostV, BoxCost& CostH) {
         auto& cost = CostV(mx, my).cost < CostH(mx, my).cost ? CostV : CostH;
         Point pp(mx, my);
@@ -319,7 +318,6 @@ Path GlobalRouter::HUM(Point f, Point t, Box box) {
         path = Path(ALL(st));
         std::cerr _ "bad path ???" _ std::endl;
     }
-    return path;
 }
 
 void GlobalRouter::route(steady_clock::time_point end) {
@@ -454,20 +452,22 @@ void GlobalRouter::pattern_routing() {
     k = 0;
     for (auto twopin: twopins) {
         twopin->ripup = true;
-        twopin->path = Lshape(twopin);
+        Lshape(twopin);
         // std::cerr _ *twopin _ std::endl;
         place(twopin);
     }
-    std::sort(ALL(twopins), [&](auto a, auto b) {
-        return score(*a) < score(*b);
-    });
-    // std::shuffle(ALL(twopins), rng);
+    if (1)
+        std::sort(ALL(twopins), [&](auto a, auto b) {
+            return score(*a) < score(*b);
+        });
+    else
+        std::shuffle(ALL(twopins), rng);
     for (auto twopin: twopins) {
         ripup(twopin);
-        if (0)
-            twopin->path = Lshape(twopin);
+        if (1)
+            Lshape(twopin);
         else // TODO
-            twopin->path = HUM(twopin);
+            HUM(twopin);
         place(twopin);
     }
     for (auto edges: { &vedges, &hedges }) for (auto& edge: *edges)
@@ -507,7 +507,7 @@ int GlobalRouter::HUM_routing() {
         if (twopin->overflow) {
     // auto begin = std::chrono::steady_clock::now();
             ripup(twopin), ripupcnt++;
-            twopin->path = HUM(twopin);
+            HUM(twopin);
             place(twopin);
     // mxt = std::max(mxt, sec_since(begin));
         }
