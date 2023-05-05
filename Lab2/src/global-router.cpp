@@ -326,12 +326,15 @@ void GlobalRouter::route(steady_clock::time_point end) {
             twopins.emplace_back(&twopin);
     init();
     pattern_routing();
+    auto tp = std::chrono::steady_clock::now();
     for (k = 1; ; k++) {
         std::cerr << "HUM_routing" _ k _ std::endl;
-        if (std::chrono::steady_clock::now() >= end)
-            break;
+        if (check_overflow(true) == 0) break;
         HUM_routing();
-        if (check_overflow(true) < 10) break;
+        auto dur = sec_since(tp);
+        tp = std::chrono::steady_clock::now();
+        if (tp + std::chrono::seconds(int(dur * 1.1)) >= end)
+            break;
     }
     // exit(-1);
 }
