@@ -62,6 +62,7 @@ private:
     std::vector<Edge> vedges, hedges;
     std::map<TwoPin*, Box> boxs;
 
+    RPoint make(Point, Point);
     ld cost(Point, Point);
     ld cost(int, int, bool);
     ld cost(const Edge&) const;
@@ -81,11 +82,13 @@ private:
     void VMR(Point, Point, BoxCost&);
     void HMR(Point, Point, BoxCost&);
     Path HUM(TwoPin*);
-    Path HUM(Point, Point, Box&);
+    Path HUM(Point, Point, Box);
 
     void construct_2D_grid_graph();
     void net_decomposition();
     void init_congestion();
     void pattern_routing();
     int HUM_routing();
+
+    void print_congestion();
 };

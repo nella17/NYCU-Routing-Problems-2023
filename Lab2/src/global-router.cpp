@@ -5,7 +5,7 @@
 #include <numeric>
 #include <queue>
 
-GlobalRouter::Edge::Edge(int _cap): cap(_cap), he(1), of(0), net{}, twopins{} {}
+GlobalRouter::Edge::Edge(int _cap): cap(_cap), demand(0), he(1), of(0), net{}, twopins{} {}
 
 void GlobalRouter::Edge::push(TwoPin* twopin, int minw, int mins) {
     auto [it, insert] = net.try_emplace(twopin->parNet->id, 0);
@@ -44,6 +44,17 @@ GlobalRouter::BoxCost::Data& GlobalRouter::BoxCost::operator()(int x, int y) {
     return cost[i * height() + j];
 }
 
+RPoint GlobalRouter::make(Point f, Point t) {
+    auto dx = std::abs(f.x - t.x);
+    auto dy = std::abs(f.y - t.y);
+    assert(dx + dy == 1);
+    if (dx == 1 and dy == 0)
+        return RPoint(std::min(f.x, t.x), f.y, 1);
+    if (dx == 0 and dy == 1)
+        return RPoint(f.x, std::min(f.y, t.y), 0);
+    __builtin_unreachable();
+}
+
 ld GlobalRouter::cost(Point f, Point t) {
     auto dx = std::abs(f.x - t.x);
     auto dy = std::abs(f.y - t.y);
@@ -59,6 +70,7 @@ ld GlobalRouter::cost(int x, int y, bool hori) {
 }
 
 ld GlobalRouter::cost(const Edge& e) const {
+    // return e.demand - e.cap + 1;
     auto dah = e.he / (C[0] + C[1] * std::sqrt(k));
     auto pe = 1 + C[2] / (1 + std::exp(C[3] * (e.cap - e.demand)));
     auto be = C[4] + C[5] / std::pow(2, k);
@@ -216,7 +228,7 @@ void GlobalRouter::HMR(Point s, Point t, BoxCost& box) {
     for (auto px = s.x, x = px+dx; x != t.x+dx; px = x, x += dx) {
         for (auto y = box.B; y <= box.U; y++)
             box(x, y) = {
-                .cost = box(px, y).cost + cost(std::min(x, px), y, 0),
+                .cost = box(px, y).cost + cost(std::min(x, px), y, 1),
                 .from = Point(px, y),
             };
         calc(x, box.B, box.U);
@@ -230,7 +242,7 @@ Path GlobalRouter::HUM(TwoPin* twopin) {
     if (!insert) {
         // TODO: box expendsion
     }
-    box.U = 2;
+    // box.U = 2;
     return HUM(twopin->from, twopin->to, box);
 }
 
@@ -241,20 +253,20 @@ std::ostream& operator<<(std::ostream& os, GlobalRouter::BoxCost& box) {
             if (p.has_value())
                 std::cerr _ p.value() << box(x,y).cost;
             else
-                std::cerr _ "(  S  )  0.0  ";
+                std::cerr _ "(  S  )       ";
         }
         std::cerr _ std::endl;
     }
     return os;
 }
 
-Path GlobalRouter::HUM(Point f, Point t, Box& box) {
+Path GlobalRouter::HUM(Point f, Point t, Box box) {
     BoxCost CostVF(box), CostHF(box), CostVT(box), CostHT(box);
     VMR(f, box.BL(), CostVF); VMR(f, box.UR(), CostVF);
     HMR(f, box.BL(), CostHF); HMR(f, box.UR(), CostHF);
     VMR(t, box.BL(), CostVT); VMR(t, box.UR(), CostVT);
     HMR(t, box.BL(), CostHT); HMR(t, box.UR(), CostHT);
-    //*
+    /*
     std::cerr
         _ "CostVF\n" << CostVF
         _ "CostHF\n" << CostHF
@@ -272,11 +284,27 @@ Path GlobalRouter::HUM(Point f, Point t, Box& box) {
         auto c = calc(x, y);
         if (c < mc)
             mx = x, my = y, mc = c;
-        std::cerr << c << " \n"[y==box.U];
+        // std::cerr << c << " \n"[y==box.U];
     }
-    std::cerr _ mx _ my _ std::endl;
+    // std::cerr _ mx _ my _ std::endl;
     Path path{};
-    // TODO: trace path from mx, my
+    auto trace = [&](BoxCost& CostV, BoxCost& CostH) {
+        auto& cost = CostV(mx, my).cost < CostH(mx, my).cost ? CostV : CostH;
+        Point pp(mx, my);
+        while (true) {
+            auto ocp = cost(pp).from;
+            if (path.size() > 1000) {
+                std::cerr _ "path ????" _ std::endl;
+                exit(-1);
+            }
+            if (!ocp.has_value()) break;
+            auto cp = ocp.value();
+            path.emplace_back(make(pp, cp));
+            pp = cp;
+        }
+    };
+    trace(CostVF, CostHF);
+    trace(CostVT, CostHT);
     // box = boxcost;
     return path;
 }
@@ -289,7 +317,7 @@ void GlobalRouter::route(int timeLimitSec) {
             twopins.emplace_back(&twopin);
     init_congestion();
     pattern_routing();
-    for (k = 0; k < 1; k++)
+    for (k = 1; k <= 10; k++)
         HUM_routing();
     // exit(-1);
 }
@@ -358,6 +386,25 @@ void GlobalRouter::net_decomposition() {
     }
 }
 
+void GlobalRouter::print_congestion() {
+    std::cerr << "horizontalCapacity\n";
+    for (int j = (int)height-1; j >= 0; j--) {
+        for (int i = 0; i+1 < (int)width; i++) {
+            auto& e = getEdge(i, j, 1);
+            std::cerr _ e.demand <<'/'<< e.cap << '(' << cost(e) << ')';
+        }
+        std::cerr _ std::endl;
+    }
+    std::cerr << "verticalCapacity\n";
+    for (int j = (int)height-2; j >= 0; j--) {
+        for (int i = 0; i < (int)width; i++) {
+            auto& e = getEdge(i, j, 0);
+            std::cerr _ e.demand <<'/'<< e.cap << '(' << cost(e) << ')';
+        }
+        std::cerr _ std::endl;
+    }
+}
+
 void GlobalRouter::init_congestion() {
     width  = (size_t)ispdData->numXGrid;
     height = (size_t)ispdData->numYGrid;
@@ -382,16 +429,6 @@ void GlobalRouter::init_congestion() {
         cong.cap -= layerCap - capacityAdj->reducedCapacityLevel;
         // std::cerr _ dx _ dy _ "/" _ lx _ ly _ "/" _ cong.cap _ layerCap _ std::endl;
     }
-    /*
-    std::cerr << "horizontalCapacity\n";
-    for (int j = height-1; j >= 0; j--)
-        for (int i = 0; i+1 < width; i++)
-            std::cerr << getCong(i, j, 1).cap << " \n"[i+2==width];
-    std::cerr << "verticalCapacity\n";
-    for (int j = height-2; j >= 0; j--)
-        for (int i = 0; i < width; i++)
-            std::cerr << getCong(i, j, 0).cap << " \n"[i+1==width];
-    //*/
 }
 
 void GlobalRouter::pattern_routing() {
@@ -408,7 +445,7 @@ void GlobalRouter::pattern_routing() {
     // std::shuffle(ALL(twopins), rng);
     for (auto twopin: twopins) {
         ripup(twopin);
-        if (1)
+        if (0)
             twopin->path = Lshape(twopin);
         else // TODO
             twopin->path = HUM(twopin);
@@ -440,12 +477,14 @@ int GlobalRouter::HUM_routing() {
         if (twopin->overflow)
             ripup(twopin), ripupcnt++;
     std::cerr _ "ripup" _ ripupcnt _ "twopin" _ std::endl;
+    // print_congestion();
 
     std::sort(ALL(twopins), [&](auto a, auto b) {
         if (a->ripup != b->ripup)
             return a->ripup > b->ripup;
         return score(*a) > score(*b);
     });
+    // std::shuffle(ALL(twopins), rng);
     for (auto twopin: twopins) {
         if (twopin->ripup) {
             twopin->path = HUM(twopin);
