@@ -73,7 +73,7 @@ ld GlobalRouter::cost(int x, int y, bool hori) {
 
 ld GlobalRouter::cost(const Edge& e) const {
     // return std::exp(std::max(0, e.demand - e.cap + 1) * 2);
-    auto dah = e.he / (C[0] + C[1] * std::sqrt(k));
+    auto dah = pow(e.he, 2) / (C[0] + C[1] * std::sqrt(k));
     auto pe = 1 + C[2] / (1 + std::exp(C[3] * (e.cap - e.demand)));
     auto be = C[4] + C[5] / std::pow(2, k);
     return (1 + dah) * pe + be;
