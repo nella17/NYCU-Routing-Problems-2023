@@ -64,6 +64,7 @@ private:
     int min_width, min_spacing;
     std::vector<Edge> vedges, hedges;
     std::unordered_map<TwoPin*, Box> boxs;
+    std::vector<TwoPin*> twopins;
 
     RPoint make(Point, Point);
     ld cost(Point, Point);
@@ -75,7 +76,6 @@ private:
     Edge& getEdge(RPoint);
     Edge& getEdge(int, int, bool);
 
-    std::vector<TwoPin*> twopins;
     void ripup(TwoPin*);
     void place(TwoPin*);
 
