@@ -43,7 +43,7 @@ GlobalRouter::BoxCost::Data& GlobalRouter::BoxCost::operator()(Point p) {
 GlobalRouter::BoxCost::Data& GlobalRouter::BoxCost::operator()(int x, int y) {
     auto i = (size_t)(x - L);
     auto j = (size_t)(y - B);
-    return cost[i * height() + j];
+    return cost.at(i * height() + j);
 }
 
 RPoint GlobalRouter::make(Point f, Point t) {
@@ -94,9 +94,9 @@ GlobalRouter::Edge& GlobalRouter::getEdge(RPoint rp) {
 GlobalRouter::Edge& GlobalRouter::getEdge(int x, int y, bool hori) {
     // std::cerr _ "getEdge" _ x _ y _ hori _ std::endl;
     if (hori)
-        return vedges[ (size_t)x * height + (size_t)y ];
+        return hedges.at( (size_t)x * height + (size_t)y );
     else
-        return hedges[ (size_t)x + (size_t)y * width ];
+        return vedges.at( (size_t)x + (size_t)y * width );
 }
 
 GlobalRouter::GlobalRouter(ISPDParser::ispdData* _ispdData, std::array<ld, C_SIZE> _C): 
@@ -323,17 +323,21 @@ Path GlobalRouter::HUM(Point f, Point t, Box box) {
 }
 
 void GlobalRouter::route(steady_clock::time_point end) {
+    width  = (size_t)ispdData->numXGrid;
+    height = (size_t)ispdData->numYGrid;
+    min_width = average(ispdData->minimumWidth);
+    min_spacing = average(ispdData->minimumSpacing);
     construct_2D_grid_graph();
     net_decomposition();
     for (auto net: ispdData->nets)
         for (auto& twopin: net->twopin)
             twopins.emplace_back(&twopin);
-    init_congestion();
+    init_edges();
     pattern_routing();
     for (k = 1; ; k++) {
         if (std::chrono::steady_clock::now() >= end)
             break;
-        if (HUM_routing() == 0)
+        if (HUM_routing() < 10)
             break;
     }
     // exit(-1);
@@ -403,7 +407,7 @@ void GlobalRouter::net_decomposition() {
     }
 }
 
-void GlobalRouter::print_congestion() {
+void GlobalRouter::print_edges() {
     std::cerr << "horizontalCapacity\n";
     for (int j = (int)height-1; j >= 0; j--) {
         for (int i = 0; i+1 < (int)width; i++) {
@@ -422,11 +426,7 @@ void GlobalRouter::print_congestion() {
     }
 }
 
-void GlobalRouter::init_congestion() {
-    width  = (size_t)ispdData->numXGrid;
-    height = (size_t)ispdData->numYGrid;
-    min_width = average(ispdData->minimumWidth);
-    min_spacing = average(ispdData->minimumSpacing);
+void GlobalRouter::init_edges() {
     auto verticalCapacity = std::accumulate(ALL(ispdData->verticalCapacity), 0);
     auto horizontalCapacity = std::accumulate(ALL(ispdData->horizontalCapacity), 0);
     vedges.assign(width * (height - 1), Edge(verticalCapacity));
@@ -441,14 +441,16 @@ void GlobalRouter::init_congestion() {
         auto dx = rx - lx, dy = ry - ly;
         if (dx + dy != 1) continue;
         auto hori = dx;
-        auto& cong = getEdge(lx, ly, hori);
+        auto& edge = getEdge(lx, ly, hori);
         auto layerCap = (hori ? ispdData->horizontalCapacity : ispdData->verticalCapacity)[z];
-        cong.cap -= layerCap - capacityAdj->reducedCapacityLevel;
+        edge.cap -= layerCap - capacityAdj->reducedCapacityLevel;
         // std::cerr _ dx _ dy _ "/" _ lx _ ly _ "/" _ cong.cap _ layerCap _ std::endl;
     }
 }
 
 void GlobalRouter::pattern_routing() {
+    auto start = std::chrono::steady_clock::now();
+
     k = 0;
     for (auto twopin: twopins) {
         twopin->ripup = true;
@@ -472,10 +474,12 @@ void GlobalRouter::pattern_routing() {
         edge.of = 0;
     for (auto twopin: twopins)
         twopin->reroute = 0;
+
+    std::cerr _ "pattern_routing" _ std::fixed << sec_since(start) << "s" << std::endl;
 }
 
 int GlobalRouter::HUM_routing() {
-    std::cerr _ "HUM_routing" _ k _ std::endl;
+    // std::cerr _ "HUM_routing" _ k _ std::endl;
     auto start = std::chrono::steady_clock::now();
 
     for (auto twopin: twopins)
@@ -511,7 +515,7 @@ int GlobalRouter::HUM_routing() {
     // std::cerr _ "max HUM" _ mxt _ "s\n";
     std::cerr _ "ripup" _ ripupcnt _ "twopin" _ std::endl;
 #ifdef DEBUG
-    print_congestion();
+    print_edges();
 #endif
 
     std::cerr.precision(2);

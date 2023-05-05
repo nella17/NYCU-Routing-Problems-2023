@@ -88,9 +88,9 @@ private:
 
     void construct_2D_grid_graph();
     void net_decomposition();
-    void init_congestion();
+    void init_edges();
     void pattern_routing();
     int HUM_routing();
 
-    void print_congestion();
+    void print_edges();
 };
