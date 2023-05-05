@@ -38,9 +38,14 @@ public:
         size_t height() const;
     };
     struct BoxCost: Box {
-        std::vector<ld> cost;
+        struct Data {
+            ld cost = INFINITY;
+            std::optional<Point> from = std::nullopt;
+        };
+        std::vector<Data> cost;
         BoxCost(const Box&);
-        ld& operator()(int,int);
+        Data& operator()(Point);
+        Data& operator()(int,int);
     };
 
     ISPDParser::ispdData* const ispdData;
@@ -57,9 +62,11 @@ private:
     std::vector<Edge> vedges, hedges;
     std::map<TwoPin*, Box> boxs;
 
-    ld cost(const Edge&);
-    ld score(const TwoPin&);
-    int delta(const TwoPin&);
+    ld cost(Point, Point);
+    ld cost(int, int, bool);
+    ld cost(const Edge&) const;
+    ld score(const TwoPin&) const;
+    int delta(const TwoPin&) const;
 
     Edge& getEdge(RPoint);
     Edge& getEdge(int, int, bool);
@@ -73,7 +80,7 @@ private:
 
     void VMR(Point, Point, BoxCost&);
     void HMR(Point, Point, BoxCost&);
-    Path HUM(TwoPin*, bool = true);
+    Path HUM(TwoPin*);
     Path HUM(Point, Point, Box&);
 
     void construct_2D_grid_graph();

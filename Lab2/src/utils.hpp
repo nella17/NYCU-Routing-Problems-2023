@@ -11,6 +11,8 @@ using ld = long double;
 
 extern std::mt19937 rng;
 
+int sign(int);
+
 double sec_since(std::chrono::steady_clock::time_point);
 
 template<typename T>
