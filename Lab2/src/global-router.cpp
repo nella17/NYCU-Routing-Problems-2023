@@ -7,20 +7,20 @@
 
 GlobalRouter::Edge::Edge(int _cap): cap(_cap), he(1), of(0), net{}, twopins{} {}
 
-void GlobalRouter::Edge::push(TwoPin* twopin, int min_width, int min_spacing) {
+void GlobalRouter::Edge::push(TwoPin* twopin, int minw, int mins) {
     auto [it, insert] = net.try_emplace(twopin->parNet->id, 0);
     if (insert) it->second++;
     assert(twopins.emplace(twopin).second);
-    demand += std::max(twopin->parNet->minimumWidth, min_width) + min_spacing;
+    demand += std::max(twopin->parNet->minimumWidth, minw) + mins;
     of++;
 }
 
-void GlobalRouter::Edge::pop(TwoPin* twopin, int min_width, int min_spacing) {
+void GlobalRouter::Edge::pop(TwoPin* twopin, int minw, int mins) {
     auto it = net.find(twopin->parNet->id);
     if (--it->second == 0)
         net.erase(it);
     assert(twopins.erase(twopin));
-    demand -= std::max(twopin->parNet->minimumWidth, min_width) + min_spacing;
+    demand -= std::max(twopin->parNet->minimumWidth, minw) + mins;
 }
 
 std::array<Point,4> GlobalRouter::Box::points() const {
@@ -74,14 +74,14 @@ void GlobalRouter::place(TwoPin* twopin) {
 }
 
 Path GlobalRouter::Lshape(Point f, Point t, int k) {
-    auto Lx = [&](int y, int lx, int rx, auto func) {
-        if (lx > rx) std::swap(lx, rx);
-        for (auto x = lx; x < rx; x++)
+    auto Lx = [&](int y, int l, int r, auto func) {
+        if (l > r) std::swap(l, r);
+        for (auto x = l; x < r; x++)
             func(x, y, 1);
     };
-    auto Ly = [&](int x, int ly, int ry, auto func) {
-        if (ly > ry) std::swap(ly, ry);
-        for (auto y = ly; y < ry; y++)
+    auto Ly = [&](int x, int d, int u, auto func) {
+        if (d > u) std::swap(d, u);
+        for (auto y = d; y < u; y++)
             func(x, y, 0);
     };
     auto L = [&](Point p1, Point p2, auto func) {
