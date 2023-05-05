@@ -32,7 +32,7 @@ std::array<Point,4> GlobalRouter::Box::points() const {
     };
 }
 
-ld GlobalRouter::cost(const Edge& e, int k) {
+ld GlobalRouter::cost(const Edge& e) {
     auto dah = e.he / (C[0] + C[1] * std::sqrt(k));
     auto pe = 1 + C[2] / (1 + std::exp(C[3] * (e.cap - e.demand)));
     auto be = C[4] + C[5] / std::pow(2, k);
@@ -73,7 +73,7 @@ void GlobalRouter::place(TwoPin* twopin) {
         getEdge(rp.x, rp.y, rp.hori).push(twopin, min_width, min_spacing);
 }
 
-Path GlobalRouter::Lshape(Point f, Point t, int k) {
+Path GlobalRouter::Lshape(Point f, Point t) {
     auto Lx = [&](int y, int l, int r, auto func) {
         if (l > r) std::swap(l, r);
         for (auto x = l; x < r; x++)
@@ -96,7 +96,7 @@ Path GlobalRouter::Lshape(Point f, Point t, int k) {
     auto Lcost = [&](Point m) {
         ld c = 0;
         auto func = [&](int x, int y, bool hori) {
-            c += cost(getEdge(x, y, hori), k);
+            c += cost(getEdge(x, y, hori));
         };
         L(f, m, func);
         L(m, t, func);
@@ -116,7 +116,7 @@ Path GlobalRouter::Lshape(Point f, Point t, int k) {
     return path;
 }
 
-Path GlobalRouter::HUM(Point f, Point t, int k) {
+Path GlobalRouter::HUM(Point f, Point t) {
     Path path{};
     return path;
 }
@@ -129,8 +129,8 @@ void GlobalRouter::route(int timeLimitSec) {
             twopins.emplace_back(&twopin);
     init_congestion();
     pattern_routing();
-    for (int k = 0; k < 1; k++)
-        HUM_routing(k);
+    for (k = 0; k < 1; k++)
+        HUM_routing();
     // exit(-1);
 }
 
@@ -235,9 +235,10 @@ void GlobalRouter::init_congestion() {
 }
 
 void GlobalRouter::pattern_routing() {
+    k = 0;
     for (auto twopin: twopins) {
         twopin->ripup = true;
-        twopin->path = Lshape(twopin->from, twopin->to, 0);
+        twopin->path = Lshape(twopin->from, twopin->to);
         // std::cerr _ *twopin _ std::endl;
         place(twopin);
     }
@@ -246,7 +247,7 @@ void GlobalRouter::pattern_routing() {
     });
     for (auto twopin: twopins) {
         ripup(twopin);
-        twopin->path = Lshape(twopin->from, twopin->to, 0);
+        twopin->path = Lshape(twopin->from, twopin->to);
         place(twopin);
     }
     for (auto edges: { &vedges, &hedges }) for (auto& edge: *edges)
@@ -255,7 +256,7 @@ void GlobalRouter::pattern_routing() {
         twopin->reroute = 0;
 }
 
-int GlobalRouter::HUM_routing(int k) {
+int GlobalRouter::HUM_routing() {
     std::cerr _ "HUM_routing" _ k _ std::endl;
     auto start = std::chrono::steady_clock::now();
 
@@ -282,7 +283,7 @@ int GlobalRouter::HUM_routing(int k) {
     });
     for (auto twopin: twopins) {
         if (twopin->ripup) {
-            twopin->path = HUM(twopin->from, twopin->to, k);
+            twopin->path = HUM(twopin->from, twopin->to);
             place(twopin);
         }
     }

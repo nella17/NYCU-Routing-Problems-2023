@@ -41,7 +41,8 @@ private:
         std::array<Point,4> points() const;
     };
 
-    ld cost(const Edge&, int);
+    int k;
+    ld cost(const Edge&);
     ld score(const TwoPin&);
     int delta(const TwoPin&);
 
@@ -54,12 +55,12 @@ private:
     void ripup(TwoPin*);
     void place(TwoPin*);
 
-    Path Lshape(Point, Point, int);
-    Path HUM(Point, Point, int);
+    Path Lshape(Point, Point);
+    Path HUM(Point, Point);
 
     void construct_2D_grid_graph();
     void net_decomposition();
     void init_congestion();
     void pattern_routing();
-    int HUM_routing(int);
+    int HUM_routing();
 };
