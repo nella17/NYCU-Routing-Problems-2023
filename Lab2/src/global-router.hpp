@@ -10,6 +10,7 @@
 #include <array>
 #include <vector>
 #include <map>
+#include <optional>
 
 #include "utils.hpp"
 

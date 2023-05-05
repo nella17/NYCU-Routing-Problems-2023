@@ -1,9 +1,11 @@
 #include "global-router.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <numeric>
 #include <queue>
+#include <chrono>
 
 GlobalRouter::Edge::Edge(int _cap): cap(_cap), demand(0), he(1), of(0), net{}, twopins{} {}
 
