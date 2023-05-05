@@ -312,12 +312,6 @@ void GlobalRouter::HUM(Path& path, Point f, Point t, Box box) {
     };
     trace(CostVF, CostHF);
     trace(CostVT, CostHT);
-    // box = boxcost;
-    std::set<RPoint> st(ALL(path));
-    if (st.size() != path.size()) {
-        path = Path(ALL(st));
-        std::cerr _ "bad path ???" _ std::endl;
-    }
 }
 
 void GlobalRouter::route(steady_clock::time_point end) {
