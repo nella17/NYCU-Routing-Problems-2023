@@ -209,6 +209,13 @@ public:
     friend std::ostream& operator<<(std::ostream &os, const RPoint& p) {
         return os << '(' << p.x << ',' << p.y << ',' << p.z << ',' << p.hori << ')';
     }
+
+    bool operator<(const RPoint& p) const {
+        if (x != p.x) return x < p.x;
+        if (y != p.y) return y < p.y;
+        if (z != p.z) return z < p.z;
+        return hori < p.hori;
+    }
 };
 
 struct TwoPin

@@ -8,8 +8,8 @@
 GlobalRouter::Edge::Edge(int _cap): cap(_cap), demand(0), he(1), of(0), net{}, twopins{} {}
 
 void GlobalRouter::Edge::push(TwoPin* twopin, int minw, int mins) {
-    auto [it, insert] = net.try_emplace(twopin->parNet->id, 0);
-    if (insert) it->second++;
+    auto [it, insert] = net.try_emplace(twopin->parNet->id, 1);
+    if (!insert) it->second++;
     assert(twopins.emplace(twopin).second);
     demand += std::max(twopin->parNet->minimumWidth, minw) + mins;
     of++;
@@ -306,6 +306,11 @@ Path GlobalRouter::HUM(Point f, Point t, Box box) {
     trace(CostVF, CostHF);
     trace(CostVT, CostHT);
     // box = boxcost;
+    std::set<RPoint> st(ALL(path));
+    if (st.size() != path.size()) {
+        path = Path(ALL(st));
+        std::cerr _ "bad path ???" _ std::endl;
+    }
     return path;
 }
 
