@@ -11,18 +11,21 @@ GlobalRouter::Edge::Edge(int _cap): cap(_cap), demand(0), he(1), of(0), net{}, t
 
 void GlobalRouter::Edge::push(TwoPin* twopin, int minw, int mins) {
     auto [it, insert] = net.try_emplace(twopin->parNet->id, 1);
-    if (!insert) it->second++;
+    if (!insert)
+        it->second++;
+    else
+        demand += std::max(twopin->parNet->minimumWidth, minw) + mins;
     assert(twopins.emplace(twopin).second);
-    demand += std::max(twopin->parNet->minimumWidth, minw) + mins;
     of++;
 }
 
 void GlobalRouter::Edge::pop(TwoPin* twopin, int minw, int mins) {
     auto it = net.find(twopin->parNet->id);
-    if (--it->second == 0)
+    if (--it->second == 0) {
         net.erase(it);
+        demand -= std::max(twopin->parNet->minimumWidth, minw) + mins;
+    }
     assert(twopins.erase(twopin));
-    demand -= std::max(twopin->parNet->minimumWidth, minw) + mins;
 }
 
 GlobalRouter::Box::Box(Point f, Point t):
