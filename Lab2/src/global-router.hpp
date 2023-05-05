@@ -29,6 +29,7 @@ public:
 private:
     struct Edge {
         int cap, demand, he, of;
+        bool overflow;
         std::map<int, size_t> net;
         std::set<TwoPin*> twopins;
         Edge(int);
@@ -37,26 +38,43 @@ private:
     };
 
     struct Box {
-        int L, R, U, D;
-        std::array<Point,4> points() const;
+        int L, R, B, U;
+        Box(Point, Point);
+        Point BL() const;
+        Point UR() const;
+        size_t width() const;
+        size_t height() const;
+    };
+    struct BoxCost: Box {
+        std::vector<ld> cost;
+        BoxCost(const Box&);
+        ld& operator()(int,int);
     };
 
     int k;
+    size_t width, height;
+    int min_width, min_spacing;
+    std::vector<Edge> vedges, hedges;
+    std::map<TwoPin*, Box> boxs;
+
     ld cost(const Edge&);
     ld score(const TwoPin&);
     int delta(const TwoPin&);
 
-    size_t width, height;
-    int min_width, min_spacing;
-    std::vector<Edge> vedges, hedges;
+    Edge& getEdge(RPoint);
     Edge& getEdge(int, int, bool);
 
     std::vector<TwoPin*> twopins;
     void ripup(TwoPin*);
     void place(TwoPin*);
 
+    Path Lshape(TwoPin*);
     Path Lshape(Point, Point);
-    Path HUM(Point, Point);
+
+    void VMR(Point, Point, BoxCost&);
+    void HMR(Point, Point, BoxCost&);
+    Path HUM(TwoPin*, bool = true);
+    Path HUM(Point, Point, Box&);
 
     void construct_2D_grid_graph();
     void net_decomposition();

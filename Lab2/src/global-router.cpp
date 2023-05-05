@@ -23,13 +23,22 @@ void GlobalRouter::Edge::pop(TwoPin* twopin, int minw, int mins) {
     demand -= std::max(twopin->parNet->minimumWidth, minw) + mins;
 }
 
-std::array<Point,4> GlobalRouter::Box::points() const {
-    return {
-        Point(L, U),
-        Point(R, U),
-        Point(L, D),
-        Point(R, D),
-    };
+GlobalRouter::Box::Box(Point f, Point t):
+    L(std::min(f.x, t.x)), R(std::max(f.x, t.x)),
+    B(std::min(f.y, t.y)), U(std::max(f.y, t.y)) {}
+
+Point GlobalRouter::Box::BL() const { return Point(L, B); }
+Point GlobalRouter::Box::UR() const { return Point(R, U); }
+size_t GlobalRouter::Box::width()  const { return size_t(R - L + 1); }
+size_t GlobalRouter::Box::height() const { return size_t(U - B + 1); }
+
+GlobalRouter::BoxCost::BoxCost(const Box& box):
+    Box(box), cost(width() * height(), 0) {}
+
+ld& GlobalRouter::BoxCost::operator()(int x, int y) {
+    auto i = (size_t)(x - L);
+    auto j = (size_t)(y - B);
+    return cost[i * height() + j];
 }
 
 ld GlobalRouter::cost(const Edge& e) {
@@ -45,6 +54,10 @@ ld GlobalRouter::score(const TwoPin& twopin) {
 
 int GlobalRouter::delta(const TwoPin& twopin) {
     return (int)C[8] + (int)C[9] / twopin.reroute;
+}
+
+GlobalRouter::Edge& GlobalRouter::getEdge(RPoint rp) {
+    return getEdge(rp.x, rp.y, rp.hori);
 }
 
 GlobalRouter::Edge& GlobalRouter::getEdge(int x, int y, bool hori) {
@@ -63,25 +76,29 @@ void GlobalRouter::ripup(TwoPin* twopin) {
     twopin->ripup = true;
     twopin->reroute++;
     for (auto rp: twopin->path)
-        getEdge(rp.x, rp.y, rp.hori).pop(twopin, min_width, min_spacing);
+        getEdge(rp).pop(twopin, min_width, min_spacing);
 }
 
 void GlobalRouter::place(TwoPin* twopin) {
     assert(twopin->ripup);
     twopin->ripup = false;
     for (auto rp: twopin->path)
-        getEdge(rp.x, rp.y, rp.hori).push(twopin, min_width, min_spacing);
+        getEdge(rp).push(twopin, min_width, min_spacing);
+}
+
+Path GlobalRouter::Lshape(TwoPin* twopin) {
+    return Lshape(twopin->from, twopin->to);
 }
 
 Path GlobalRouter::Lshape(Point f, Point t) {
-    auto Lx = [&](int y, int l, int r, auto func) {
-        if (l > r) std::swap(l, r);
-        for (auto x = l; x < r; x++)
+    auto Lx = [&](int y, int L, int R, auto func) {
+        if (L > R) std::swap(L, R);
+        for (auto x = L; x < R; x++)
             func(x, y, 1);
     };
-    auto Ly = [&](int x, int d, int u, auto func) {
-        if (d > u) std::swap(d, u);
-        for (auto y = d; y < u; y++)
+    auto Ly = [&](int x, int B, int U, auto func) {
+        if (B > U) std::swap(B, U);
+        for (auto y = B; y < U; y++)
             func(x, y, 0);
     };
     auto L = [&](Point p1, Point p2, auto func) {
@@ -116,8 +133,42 @@ Path GlobalRouter::Lshape(Point f, Point t) {
     return path;
 }
 
-Path GlobalRouter::HUM(Point f, Point t) {
+void GlobalRouter::VMR(Point s, Point t, BoxCost& cost) {
+    // TODO
+}
+void GlobalRouter::HMR(Point s, Point t, BoxCost& cost) {
+    // TODO
+}
+
+Path GlobalRouter::HUM(TwoPin* twopin, bool expend) {
+    auto& box = boxs.try_emplace(twopin, twopin->from, twopin->to).first->second;
+    if (expend) {
+        // TODO: box expendsion
+    }
+    return HUM(twopin->from, twopin->to, box);
+}
+
+Path GlobalRouter::HUM(Point f, Point t, Box& box) {
+    BoxCost CostVF(box), CostHF(box), CostVT(box), CostHT(box);
+    VMR(f, box.BL(), CostVF); VMR(f, box.UR(), CostVF);
+    HMR(f, box.BL(), CostHF); HMR(f, box.UR(), CostHF);
+    VMR(t, box.BL(), CostVT); VMR(t, box.UR(), CostVT);
+    HMR(t, box.BL(), CostHT); HMR(t, box.UR(), CostHT);
+    auto calc = [&](int x, int y) {
+        auto cs = std::min(CostVF(x,y), CostHF(x,y));
+        auto ct = std::min(CostVT(x,y), CostHT(x,y));
+        return cs + ct;
+    };
+    auto mx = box.L, my = box.B;
+    auto mc = calc(mx, my);
+    for (auto x = box.L; x <= box.R; x++) for (auto y = box.B; y <= box.U; y++) {
+        auto c = calc(x, y);
+        if (c < mc)
+            mx = x, my = y, mc = c;
+    }
     Path path{};
+    // TODO: trace path from mx, my
+    // box = boxcost;
     return path;
 }
 
@@ -238,16 +289,20 @@ void GlobalRouter::pattern_routing() {
     k = 0;
     for (auto twopin: twopins) {
         twopin->ripup = true;
-        twopin->path = Lshape(twopin->from, twopin->to);
+        twopin->path = Lshape(twopin);
         // std::cerr _ *twopin _ std::endl;
         place(twopin);
     }
-    std::sort(twopins.begin(), twopins.end(), [&](auto a, auto b) {
-        return score(*a) > score(*b);
+    std::sort(ALL(twopins), [&](auto a, auto b) {
+        return score(*a) < score(*b);
     });
+    // std::shuffle(ALL(twopins), rng);
     for (auto twopin: twopins) {
         ripup(twopin);
-        twopin->path = Lshape(twopin->from, twopin->to);
+        if (1)
+            twopin->path = Lshape(twopin);
+        else // TODO
+            twopin->path = HUM(twopin, false);
         place(twopin);
     }
     for (auto edges: { &vedges, &hedges }) for (auto& edge: *edges)
@@ -265,7 +320,8 @@ int GlobalRouter::HUM_routing() {
     for (auto edges: { &vedges, &hedges }) for (auto& edge: *edges) {
         edge.he += edge.of;
         edge.of = 0;
-        if (edge.demand > edge.cap)
+        edge.overflow = edge.demand > edge.cap;
+        if (edge.overflow)
             for (auto twopin: edge.twopins)
                 twopin->overflow++;
     }
@@ -276,14 +332,14 @@ int GlobalRouter::HUM_routing() {
             ripup(twopin), ripupcnt++;
     std::cerr _ "ripup" _ ripupcnt _ "twopin" _ std::endl;
 
-    std::sort(twopins.begin(), twopins.end(), [&](auto a, auto b) {
+    std::sort(ALL(twopins), [&](auto a, auto b) {
         if (a->ripup != b->ripup)
             return a->ripup > b->ripup;
         return score(*a) > score(*b);
     });
     for (auto twopin: twopins) {
         if (twopin->ripup) {
-            twopin->path = HUM(twopin->from, twopin->to);
+            twopin->path = HUM(twopin);
             place(twopin);
         }
     }
