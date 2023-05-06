@@ -52,14 +52,14 @@ public:
         Data& operator()(int,int);
     };
 
-    bool stop;
+    bool stop, print;
     ISPDParser::ispdData* const ispdData;
     const std::array<ld, C_SIZE> C;
 
     GlobalRouter(ISPDParser::ispdData*, std::array<ld, C_SIZE>);
 
-    void route();
-    LayerAssignment::Graph* layer_assignment();
+    void route(bool = false);
+    LayerAssignment::Graph* layer_assignment(bool = true);
 
 private:
     int k;

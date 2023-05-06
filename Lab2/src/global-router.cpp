@@ -114,7 +114,7 @@ GlobalRouter::Edge& GlobalRouter::getEdge(int x, int y, bool hori) {
 }
 
 GlobalRouter::GlobalRouter(ISPDParser::ispdData* _ispdData, std::array<ld, C_SIZE> _C): 
-    stop(false), ispdData(_ispdData), C(_C) {}
+    stop(false), print(true), ispdData(_ispdData), C(_C) {}
 
 void GlobalRouter::ripup(TwoPin* twopin) {
     assert(!twopin->ripup);
@@ -341,7 +341,7 @@ void GlobalRouter::HUM(TwoPin* twopin) {
     trace(CostVT, CostHT);
 }
 
-void GlobalRouter::route() {
+void GlobalRouter::route(bool preroute) {
     width  = (size_t)ispdData->numXGrid;
     height = (size_t)ispdData->numYGrid;
     min_width = average(ispdData->minimumWidth);
@@ -352,6 +352,7 @@ void GlobalRouter::route() {
         for (auto& twopin: net->twopin)
             twopins.emplace_back(&twopin);
     init();
+    if (preroute) return;
     routing("Lshape", &GlobalRouter::Lshape);
     // TODO: Zshape
     // TODO: monotonic
@@ -442,7 +443,7 @@ void GlobalRouter::print_edges() {
 }
 
 void GlobalRouter::init() {
-    std::cerr << "[*]" _ "init" _ std::endl;
+    if (print) std::cerr << "[*]" _ "init" _ std::endl;
     auto start = std::chrono::steady_clock::now();
     auto verticalCapacity = std::accumulate(ALL(ispdData->verticalCapacity), 0);
     auto horizontalCapacity = std::accumulate(ALL(ispdData->horizontalCapacity), 0);
@@ -482,7 +483,7 @@ void GlobalRouter::init() {
         edge.of = 0;
     for (auto twopin: twopins)
         twopin->reroute = 0;
-    std::cerr _ "time" _ sec_since(start) << 's';
+    if (print) std::cerr _ "time" _ sec_since(start) << 's';
     check_overflow();
 }
 
@@ -510,7 +511,7 @@ int GlobalRouter::check_overflow() {
             cnt++;
     }
 
-    std::cerr 
+    if (print) std::cerr 
         _ "  tot overflow" _ totof
         _ "  mx overflow" _ mxof
         _ "  wirelength" _ wl
@@ -521,17 +522,17 @@ int GlobalRouter::check_overflow() {
 
 void GlobalRouter::ripup_place(FP fp) {
     for (auto twopin: twopins) {
+        if (stop) throw false;
         if (twopin->overflow) {
             ripup(twopin);
             (this->*fp)(twopin);
             place(twopin);
         }
-        if (stop) throw false;
     }
 }
 
 void GlobalRouter::routing(const char* name, FP fp, int iteration) {
-    std::cerr << "[*]" _ name _ "routing" << std::endl;
+    if (print) std::cerr << "[*]" _ name _ "routing" << std::endl;
     auto start = std::chrono::steady_clock::now();
     for (int i = 1; i <= iteration; i++, k++) {
         auto iterstart = std::chrono::steady_clock::now();
@@ -542,20 +543,20 @@ void GlobalRouter::routing(const char* name, FP fp, int iteration) {
         });
         // std::shuffle(ALL(twopins), rng);
         ripup_place(fp);
-        std::cerr _ i _ " time" _ sec_since(iterstart) << 's';
+        if (print) std::cerr _ i _ " time" _ sec_since(iterstart) << 's';
         if (check_overflow() == 0) throw true;
 #ifdef DEBUG
         print_edges();
 #endif
     }
-    std::cerr _ name _ "routing costs" _ sec_since(start) << "s" << std::endl;
+    if (print) std::cerr _ name _ "routing costs" _ sec_since(start) << "s" << std::endl;
 }
 
-LayerAssignment::Graph* GlobalRouter::layer_assignment() {
+LayerAssignment::Graph* GlobalRouter::layer_assignment(bool print_to_screen) {
     // Assign routing layers to the two-pin net
     auto graph = new LayerAssignment::Graph;
     graph->initialLA(*ispdData, 1);
-    graph->convertGRtoLA(*ispdData, true);
-    graph->COLA(true);
+    graph->convertGRtoLA(*ispdData, print_to_screen);
+    graph->COLA(print_to_screen);
     return graph;
 }

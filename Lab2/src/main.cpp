@@ -39,7 +39,7 @@ int main(int argc, char* const argv []) {
     }
     auto inputFile = argv[1];
     auto outputFile = argv[2];
-    auto timeLimitSec = argc < 4 ? 60 * 30 : atoi(argv[3]);
+    auto timeLimitSec = argc < 4 ? 30 * 60 : atoi(argv[3]);
 
     auto start = std::chrono::steady_clock::now();
     auto end = start + std::chrono::seconds(timeLimitSec);
@@ -62,10 +62,27 @@ int main(int argc, char* const argv []) {
     time = std::chrono::steady_clock::now();
     std::condition_variable cv;
     std::mutex cv_m;
+    std::unique_lock<std::mutex> lk(cv_m);
+
     std::thread([&]() {
-        std::unique_lock<std::mutex> lk(cv_m);
-        auto tl = end - std::chrono::seconds(15);
-        if (cv.wait_until(lk, tl) == std::cv_status::timeout)
+        std::chrono::duration<double> Ld = time - start;
+        {
+            auto TispdData = parse_input(inputFile);
+            GlobalRouter Tgr(TispdData, gr.C);
+            Tgr.print = false;
+            Tgr.route(true);
+            auto Ls = std::chrono::steady_clock::now();
+            auto Tgraph = Tgr.layer_assignment(false);
+            Tgraph->output3Dresult(outputFile);
+            Ld = std::chrono::steady_clock::now() - Ls;
+            delete Tgraph;
+            delete TispdData;
+        }
+        std::cerr << "[-] preroute LayerAssignment costs" _ Ld.count() _ "s" _ std::endl;
+
+        auto reserve = Ld * 3 + std::chrono::seconds(5);
+        auto tl = end - reserve;
+        if (gr.stop or cv.wait_until(lk, tl) == std::cv_status::timeout)
             gr.stop = true;
     }).detach();
 
@@ -77,6 +94,7 @@ int main(int argc, char* const argv []) {
     } catch (...) {
         std::cerr _ ">>>> unknown error <<<<" _ std::endl;
     }
+    gr.stop = true;
     cv.notify_all();
     std::cerr << "[*] route costs" _ sec_since(time) << "s" << std::endl;
 
@@ -88,6 +106,8 @@ int main(int argc, char* const argv []) {
 
     delete graph;
     delete ispdData;
+
+    std::exit(EXIT_SUCCESS);
 
     return 0;
 }
