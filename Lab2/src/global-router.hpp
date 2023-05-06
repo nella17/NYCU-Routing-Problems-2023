@@ -85,7 +85,6 @@ private:
     void place(TwoPin*);
 
     void Lshape(TwoPin*);
-    void Lshape_impl(Path&, Point, Point);
 
     void Zshape(TwoPin*);
 
@@ -93,7 +92,6 @@ private:
 
     void VMR_impl(Point, Point, BoxCost&);
     void HMR_impl(Point, Point, BoxCost&);
-    void HUM_impl(Path&, Point, Point, Box);
     void HUM(TwoPin*);
 
     void construct_2D_grid_graph();

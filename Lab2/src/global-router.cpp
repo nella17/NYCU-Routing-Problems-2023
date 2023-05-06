@@ -132,10 +132,6 @@ void GlobalRouter::place(TwoPin* twopin) {
 }
 
 void GlobalRouter::Lshape(TwoPin* twopin) {
-    return Lshape_impl(twopin->path, twopin->from, twopin->to);
-}
-
-void GlobalRouter::Lshape_impl(Path& path, Point f, Point t) {
     auto Lx = [&](int y, int L, int R, auto func) {
         if (L > R) std::swap(L, R);
         for (auto x = L; x < R; x++)
@@ -152,6 +148,8 @@ void GlobalRouter::Lshape_impl(Path& path, Point f, Point t) {
         if (p1.y == p2.y) return Lx(p1.y, p1.x, p2.x, func);
     };
 
+    auto& path = twopin->path;
+    auto f = twopin->from, t = twopin->to;
     if (f.y > t.y) std::swap(f, t);
     if (f.x > t.x) std::swap(f, t);
 
@@ -259,6 +257,20 @@ void GlobalRouter::monotonic(TwoPin* twopin) {
     // TODO
 }
 
+std::ostream& operator<<(std::ostream& os, GlobalRouter::BoxCost& box) {
+    for (auto y = box.U; y >= box.B; y--) {
+        for (auto x = box.L; x <= box.R; x++) {
+            auto p = box(x,y).from;
+            if (p.has_value())
+                std::cerr _ p.value() << box(x,y).cost;
+            else
+                std::cerr _ "(  S  )       ";
+        }
+        std::cerr _ std::endl;
+    }
+    return os;
+}
+
 void GlobalRouter::HUM(TwoPin* twopin) {
     auto [it,insert] = boxs.try_emplace(twopin, twopin->from, twopin->to);
     auto& box = it->second;
@@ -277,24 +289,10 @@ void GlobalRouter::HUM(TwoPin* twopin) {
             box.U = std::min((int)height-1, box.U + d);
         }
     }
-    return HUM_impl(twopin->path, twopin->from, twopin->to, box);
-}
 
-std::ostream& operator<<(std::ostream& os, GlobalRouter::BoxCost& box) {
-    for (auto y = box.U; y >= box.B; y--) {
-        for (auto x = box.L; x <= box.R; x++) {
-            auto p = box(x,y).from;
-            if (p.has_value())
-                std::cerr _ p.value() << box(x,y).cost;
-            else
-                std::cerr _ "(  S  )       ";
-        }
-        std::cerr _ std::endl;
-    }
-    return os;
-}
+    auto& path = twopin->path;
+    auto f = twopin->from, t = twopin->to;
 
-void GlobalRouter::HUM_impl(Path& path, Point f, Point t, const Box box) {
     BoxCost CostVF(box), CostHF(box), CostVT(box), CostHT(box);
     VMR_impl(f, box.BL(), CostVF); VMR_impl(f, box.UR(), CostVF);
     HMR_impl(f, box.BL(), CostHF); HMR_impl(f, box.UR(), CostHF);
