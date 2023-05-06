@@ -263,12 +263,19 @@ void GlobalRouter::HUM(TwoPin* twopin) {
     auto [it,insert] = boxs.try_emplace(twopin, twopin->from, twopin->to);
     auto& box = it->second;
     if (!insert) {
-        // TODO: box expansion
+        // Congestion-aware Bounding Box Expansion
+        std::array<int,2> CntOE{ 0, 0 };
+        for (auto rp: twopin->path)
+            CntOE[ rp.hori ] ++;
         auto d = delta(*twopin);
-        box.L = std::max(0, box.L - d);
-        box.B = std::max(0, box.B - d);
-        box.R = std::min((int)width-1, box.R + d);
-        box.U = std::min((int)height-1, box.U + d);
+        auto [cV, cH] = CntOE;
+        if ((cV != cH ? cV < cH : randint(2))) {
+            box.L = std::max(0, box.L - d);
+            box.B = std::max(0, box.B - d);
+        } else {
+            box.R = std::min((int)width-1, box.R + d);
+            box.U = std::min((int)height-1, box.U + d);
+        }
     }
     return HUM_impl(twopin->path, twopin->from, twopin->to, box);
 }
@@ -287,7 +294,7 @@ std::ostream& operator<<(std::ostream& os, GlobalRouter::BoxCost& box) {
     return os;
 }
 
-void GlobalRouter::HUM_impl(Path& path, Point f, Point t, Box box) {
+void GlobalRouter::HUM_impl(Path& path, Point f, Point t, const Box box) {
     BoxCost CostVF(box), CostHF(box), CostVT(box), CostHT(box);
     VMR_impl(f, box.BL(), CostVF); VMR_impl(f, box.UR(), CostVF);
     HMR_impl(f, box.BL(), CostHF); HMR_impl(f, box.UR(), CostHF);
