@@ -85,8 +85,10 @@ private:
     void place(TwoPin*);
 
     void Lshape(TwoPin*);
-
     void Zshape(TwoPin*);
+
+    void calcX(BoxCost&, int, int, int);
+    void calcY(BoxCost&, int, int, int);
 
     void monotonic(TwoPin*);
 
