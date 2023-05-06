@@ -16,11 +16,12 @@
 #include "utils.hpp"
 
 using namespace ISPDParser;
-using std::chrono::steady_clock;
 
 class GlobalRouter {
 public:
     static const size_t C_SIZE = 11;
+
+    using FP = void (GlobalRouter::*)(TwoPin*);
 
     struct Edge {
         int cap, demand, he, of;
@@ -51,11 +52,13 @@ public:
         Data& operator()(int,int);
     };
 
+    bool stop;
     ISPDParser::ispdData* const ispdData;
     const std::array<ld, C_SIZE> C;
+
     GlobalRouter(ISPDParser::ispdData*, std::array<ld, C_SIZE>);
 
-    void route(steady_clock::time_point);
+    void route();
     LayerAssignment::Graph* layer_assignment();
 
 private:
@@ -98,7 +101,7 @@ private:
     void init();
     int check_overflow();
 
-    using FP = void (GlobalRouter::*)(TwoPin*);
+    void ripup_place(FP);
     void routing(const char*, FP, int = 1);
 
     void print_edges();

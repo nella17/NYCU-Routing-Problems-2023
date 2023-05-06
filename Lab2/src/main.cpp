@@ -11,6 +11,9 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
 
 auto parse_input(const char* file) {
     // parse input
@@ -41,13 +44,41 @@ int main(int argc, char* const argv []) {
     auto start = std::chrono::steady_clock::now();
     auto end = start + std::chrono::seconds(timeLimitSec);
 
+    auto time = std::chrono::steady_clock::now();
     auto ispdData = parse_input(inputFile);
+    std::cerr << "[*] input '" << inputFile << "' costs" _ sec_since(time) << "s" << std::endl;
 
     GlobalRouter gr(
         ispdData,
-        { 7, 4, 150, 0.3, 30, 200, 30, 0.2 , 1, 5, 30 }
+        { 
+            7, 4,
+            150, 0.3,
+            30, 200,
+            30, 0.2 , 1,
+            5, 30
+        }
     );
-    gr.route(end - std::chrono::seconds(10));
+
+    time = std::chrono::steady_clock::now();
+    std::condition_variable cv;
+    std::mutex cv_m;
+    std::thread([&]() {
+        std::unique_lock<std::mutex> lk(cv_m);
+        auto tl = end - std::chrono::seconds(15);
+        if (cv.wait_until(lk, tl) == std::cv_status::timeout)
+            gr.stop = true;
+    }).detach();
+
+    try {
+        gr.route();
+        cv.notify_all();
+    } catch (bool done) {
+        if (!done)
+            std::cerr _ ">>>> route stop or fail <<<<" _ std::endl;
+    } catch (...) {
+        std::cerr _ ">>>> unknown error <<<<" _ std::endl;
+    }
+    std::cerr << "[*] route costs" _ sec_since(time) << "s\n" << std::endl;
 
     auto graph = gr.layer_assignment();
     // Output result

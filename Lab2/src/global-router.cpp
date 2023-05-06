@@ -114,7 +114,7 @@ GlobalRouter::Edge& GlobalRouter::getEdge(int x, int y, bool hori) {
 }
 
 GlobalRouter::GlobalRouter(ISPDParser::ispdData* _ispdData, std::array<ld, C_SIZE> _C): 
-    ispdData(_ispdData), C(_C) {}
+    stop(false), ispdData(_ispdData), C(_C) {}
 
 void GlobalRouter::ripup(TwoPin* twopin) {
     assert(!twopin->ripup);
@@ -324,7 +324,7 @@ void GlobalRouter::HUM_impl(Path& path, Point f, Point t, Box box) {
             auto ocp = cost(pp).from;
             if (path.size() > width * height) {
                 std::cerr _ "path ????" _ std::endl;
-                exit(-1);
+                throw false;
             }
             if (!ocp.has_value()) break;
             auto cp = ocp.value();
@@ -336,7 +336,7 @@ void GlobalRouter::HUM_impl(Path& path, Point f, Point t, Box box) {
     trace(CostVT, CostHT);
 }
 
-void GlobalRouter::route(steady_clock::time_point end) {
+void GlobalRouter::route() {
     width  = (size_t)ispdData->numXGrid;
     height = (size_t)ispdData->numYGrid;
     min_width = average(ispdData->minimumWidth);
@@ -347,18 +347,10 @@ void GlobalRouter::route(steady_clock::time_point end) {
         for (auto& twopin: net->twopin)
             twopins.emplace_back(&twopin);
     init();
-    try {
-        routing("Lshape", &GlobalRouter::Lshape);
-        // TODO: Zshape
-        // TODO: monotonic
-        routing("HUM", &GlobalRouter::HUM, INT_MAX);
-        // TODO: timer
-        // if (std::chrono::steady_clock::now() + std::chrono::seconds(int(duration)) >= end)
-        //     break;
-    } catch (bool done) {
-        if (!done)
-            std::cerr _ ">>>> not finish <<<<" _ std::endl;
-    }
+    routing("Lshape", &GlobalRouter::Lshape);
+    // TODO: Zshape
+    // TODO: monotonic
+    routing("HUM", &GlobalRouter::HUM, INT_MAX);
 }
 
 void GlobalRouter::construct_2D_grid_graph() {
@@ -480,11 +472,7 @@ void GlobalRouter::init() {
         return a->cost < b->cost;
     });
     // std::shuffle(ALL(twopins), rng);
-    for (auto twopin: twopins) {
-        ripup(twopin);
-        Lshape(twopin);
-        place(twopin);
-    }
+    ripup_place(&GlobalRouter::Lshape);
     for (auto edges: { &vedges, &hedges }) for (auto& edge: *edges)
         edge.of = 0;
     for (auto twopin: twopins)
@@ -526,6 +514,17 @@ int GlobalRouter::check_overflow() {
     return totof;
 }
 
+void GlobalRouter::ripup_place(FP fp) {
+    for (auto twopin: twopins) {
+        if (twopin->overflow) {
+            ripup(twopin);
+            (this->*fp)(twopin);
+            place(twopin);
+        }
+        if (stop) throw false;
+    }
+}
+
 void GlobalRouter::routing(const char* name, FP fp, int iteration) {
     std::cerr << "[*]" _ name _ "routing" << std::endl;
     auto start = std::chrono::steady_clock::now();
@@ -537,14 +536,12 @@ void GlobalRouter::routing(const char* name, FP fp, int iteration) {
             return score(*a) > score(*b);
         });
         // std::shuffle(ALL(twopins), rng);
-        for (auto twopin: twopins)
-            if (twopin->overflow) {
-                ripup(twopin);
-                (this->*fp)(twopin);
-                place(twopin);
-            }
+        ripup_place(fp);
         std::cerr _ i _ " time" _ sec_since(iterstart) << 's';
         if (check_overflow() == 0) throw true;
+#ifdef DEBUG
+        print_edges();
+#endif
     }
     std::cerr _ name _ "routing costs" _ sec_since(start) << "s\n" << std::endl;
 }
