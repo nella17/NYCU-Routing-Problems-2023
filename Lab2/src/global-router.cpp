@@ -550,7 +550,7 @@ void GlobalRouter::routing(const char* name, FP fp, int iteration) {
         print_edges();
 #endif
     }
-    std::cerr _ name _ "routing costs" _ sec_since(start) << "s\n" << std::endl;
+    std::cerr _ name _ "routing costs" _ sec_since(start) << "s" << std::endl;
 }
 
 LayerAssignment::Graph* GlobalRouter::layer_assignment() {
