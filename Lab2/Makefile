@@ -4,7 +4,7 @@ objDIR := ./obj
 
 CXX ?= g++
 CXXFLAGS := -std=c++17 -I${SRCDIR} -MMD -MP -Wall -Wextra -Wshadow -Wconversion
-LDFLAGS  := 
+LDFLAGS  := -lpthread
 RC_FLAGS := -Ofast
 DC_FLAGS := -g -DDEBUG -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC -D_GLIBCXX_DEBUG_PEDANTIC_ASSERT
 
