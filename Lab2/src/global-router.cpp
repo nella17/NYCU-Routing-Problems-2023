@@ -213,15 +213,15 @@ void GlobalRouter::calcY(BoxCost& box, int x, int by, int ey) {
     }
 }
 
-void GlobalRouter::VMR_impl(Point s, Point t, BoxCost& box) {
-    box(s) = {
+void GlobalRouter::VMR_impl(Point f, Point t, BoxCost& box) {
+    box(f) = {
         .cost = 0,
         .from = std::nullopt,
     };
-    calcX(box, s.y, box.L, box.R);
-    calcX(box, s.y, box.R, box.L);
-    auto dy = sign(t.y - s.y);
-    for (auto py = s.y, y = py+dy; y != t.y+dy; py = y, y += dy) {
+    calcX(box, f.y, box.L, box.R);
+    calcX(box, f.y, box.R, box.L);
+    auto dy = sign(t.y - f.y);
+    for (auto py = f.y, y = py+dy; y != t.y+dy; py = y, y += dy) {
         for (auto x = box.L; x <= box.R; x++)
             box(x, y) = {
                 .cost = box(x, py).cost + cost(x, std::min(y, py), 0),
@@ -232,15 +232,15 @@ void GlobalRouter::VMR_impl(Point s, Point t, BoxCost& box) {
     }
 }
 
-void GlobalRouter::HMR_impl(Point s, Point t, BoxCost& box) {
-    box(s) = {
+void GlobalRouter::HMR_impl(Point f, Point t, BoxCost& box) {
+    box(f) = {
         .cost = 0,
         .from = std::nullopt,
     };
-    calcY(box, s.x, box.B, box.U);
-    calcY(box, s.x, box.U, box.B);
-    auto dx = sign(t.x - s.x);
-    for (auto px = s.x, x = px+dx; x != t.x+dx; px = x, x += dx) {
+    calcY(box, f.x, box.B, box.U);
+    calcY(box, f.x, box.U, box.B);
+    auto dx = sign(t.x - f.x);
+    for (auto px = f.x, x = px+dx; x != t.x+dx; px = x, x += dx) {
         for (auto y = box.B; y <= box.U; y++)
             box(x, y) = {
                 .cost = box(px, y).cost + cost(std::min(x, px), y, 1),
