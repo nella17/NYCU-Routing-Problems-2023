@@ -108,7 +108,7 @@ ld GlobalRouter::cost(const Edge& e) const {
 }
 
 ld GlobalRouter::score(const TwoPin& twopin) const {
-    return C[6] * twopin.overflow + C[7] * twopin.cost + C[8] * twopin.reroute;
+    return C[6] * twopin.overflow + C[7] * twopin.wlen() + C[8] * twopin.reroute;
 }
 
 int GlobalRouter::delta(const TwoPin& twopin) const {
@@ -390,8 +390,7 @@ void GlobalRouter::route(bool preroute) {
     if (preroute) return;
     routing("Lshape", &GlobalRouter::Lshape);
     // TODO: Zshape
-    // TODO: monotonic
-    routing("monotonic", &GlobalRouter::monotonic, 5);
+    routing("monotonic", &GlobalRouter::monotonic, 2);
     routing("HUM", &GlobalRouter::HUM, INT_MAX);
 }
 
