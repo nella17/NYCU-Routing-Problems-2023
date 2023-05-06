@@ -7,6 +7,20 @@
 #include <queue>
 #include <chrono>
 
+std::ostream& operator<<(std::ostream& os, GlobalRouter::BoxCost& box) {
+    for (auto y = box.U; y >= box.B; y--) {
+        for (auto x = box.L; x <= box.R; x++) {
+            auto p = box(x,y).from;
+            if (p.has_value())
+                std::cerr _ p.value() << box(x,y).cost;
+            else
+                std::cerr _ "(  S  )       ";
+        }
+        std::cerr _ std::endl;
+    }
+    return os;
+}
+
 GlobalRouter::Edge::Edge(int _cap): cap(_cap), demand(0), he(1), of(0), net{}, twopins{} {}
 
 void GlobalRouter::Edge::push(TwoPin* twopin, int minw, int mins) {
@@ -175,6 +189,10 @@ void GlobalRouter::Lshape(TwoPin* twopin) {
     L(f, m, func); L(m, t, func);
 }
 
+void GlobalRouter::Zshape(TwoPin* twopin) {
+    // TODO
+}
+
 void GlobalRouter::calcX(BoxCost& box, int y, int bx, int ex) {
     auto dx = sign(ex - bx);
     if (dx == 0) return;
@@ -210,6 +228,43 @@ void GlobalRouter::calcY(BoxCost& box, int x, int by, int ey) {
             };
         }
         pc = cc;
+    }
+}
+
+void GlobalRouter::monotonic(TwoPin* twopin) {
+    auto& path = twopin->path;
+    auto f = twopin->from, t = twopin->to;
+    if (f.y > t.y) std::swap(f, t);
+    if (f.x > t.x) std::swap(f, t);
+
+    BoxCost box(Box(f, t));
+    box(f) = {
+        .cost = 0,
+        .from = std::nullopt,
+    };
+    calcX(box, f.y, f.x, t.x);
+    auto dy = sign(t.y - f.y);
+    for (auto py = f.y, y = py+dy; y != t.y+dy; py = y, y += dy) {
+        for (auto x = f.x; x <= t.x; x++)
+            box(x, y) = {
+                .cost = box(x, py).cost + cost(x, std::min(y, py), 0),
+                .from = Point(x, py),
+            };
+        calcX(box, y, f.x, t.x);
+    }
+
+    path.clear();
+    Point pp(t);
+    while (true) {
+        auto ocp = box(pp).from;
+        if (path.size() > width * height) {
+            std::cerr _ "path ????" _ std::endl;
+            throw false;
+        }
+        if (!ocp.has_value()) break;
+        auto cp = ocp.value();
+        path.emplace_back(make(pp, cp));
+        pp = cp;
     }
 }
 
@@ -249,28 +304,6 @@ void GlobalRouter::HMR_impl(Point f, Point t, BoxCost& box) {
         calcY(box, x, box.B, box.U);
         calcY(box, x, box.U, box.B);
     }
-}
-
-void GlobalRouter::Zshape(TwoPin* twopin) {
-    // TODO
-}
-
-void GlobalRouter::monotonic(TwoPin* twopin) {
-    // TODO
-}
-
-std::ostream& operator<<(std::ostream& os, GlobalRouter::BoxCost& box) {
-    for (auto y = box.U; y >= box.B; y--) {
-        for (auto x = box.L; x <= box.R; x++) {
-            auto p = box(x,y).from;
-            if (p.has_value())
-                std::cerr _ p.value() << box(x,y).cost;
-            else
-                std::cerr _ "(  S  )       ";
-        }
-        std::cerr _ std::endl;
-    }
-    return os;
 }
 
 void GlobalRouter::HUM(TwoPin* twopin) {
@@ -358,6 +391,7 @@ void GlobalRouter::route(bool preroute) {
     routing("Lshape", &GlobalRouter::Lshape);
     // TODO: Zshape
     // TODO: monotonic
+    routing("monotonic", &GlobalRouter::monotonic, 5);
     routing("HUM", &GlobalRouter::HUM, INT_MAX);
 }
 
@@ -482,7 +516,7 @@ void GlobalRouter::init() {
     // std::shuffle(ALL(twopins), rng);
     ripup_place(&GlobalRouter::Lshape);
     for (auto edges: { &vedges, &hedges }) for (auto& edge: *edges)
-        edge.of = 0;
+        edge.he = edge.of = 0;
     for (auto twopin: twopins)
         twopin->reroute = 0;
     if (print) std::cerr _ "time" _ sec_since(start) << 's';
