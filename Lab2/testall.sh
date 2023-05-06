@@ -1,5 +1,6 @@
 #!/bin/bash
 result=Benchmarks
+tl=$(( 60 * 60 ))
 
 function prepend() { while read -r line; do echo "${1}${line}"; done; }
 
@@ -7,7 +8,7 @@ route() {
   in=$1
   out=$1.out
   time=$1.txt
-  /usr/bin/time -p ./router "$in" "$out" $((1)) 2>&1 | tee "$time" | prepend "$(basename "$in") "
+  /usr/bin/time -p ./router "$in" "$out" "$tl" 2>&1 | tee "$time" | prepend "$(basename "$in") "
   if [ $? ]; then
     echo "$1 done"
     time perl ./eval2008.pl "$in" "$out" 2>&1 | tee -a "$result"
