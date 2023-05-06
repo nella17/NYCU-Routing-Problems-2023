@@ -80,9 +80,11 @@ int main(int argc, char* const argv []) {
     }
     std::cerr << "[*] route costs" _ sec_since(time) << "s\n" << std::endl;
 
+    time = std::chrono::steady_clock::now();
     auto graph = gr.layer_assignment();
     // Output result
     graph->output3Dresult(outputFile);
+    std::cerr << "[*] LayerAssignment costs" _ sec_since(time) << "s\n" << std::endl;
 
     delete graph;
     delete ispdData;
