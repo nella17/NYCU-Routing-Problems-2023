@@ -246,7 +246,7 @@ struct TwoPin
     }
 
     int wlen() const {
-        return path.size() or HPWL();
+        return path.size();
     }
 
     friend std::ostream& operator<<(std::ostream &os, const TwoPin& twopin) {
