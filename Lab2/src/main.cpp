@@ -71,13 +71,13 @@ int main(int argc, char* const argv []) {
 
     try {
         gr.route();
-        cv.notify_all();
     } catch (bool done) {
         if (!done)
             std::cerr _ ">>>> route stop or fail <<<<" _ std::endl;
     } catch (...) {
         std::cerr _ ">>>> unknown error <<<<" _ std::endl;
     }
+    cv.notify_all();
     std::cerr << "[*] route costs" _ sec_since(time) << "s\n" << std::endl;
 
     time = std::chrono::steady_clock::now();
