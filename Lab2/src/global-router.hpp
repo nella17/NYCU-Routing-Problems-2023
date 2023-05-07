@@ -13,6 +13,7 @@
 #include <unordered_set>
 #include <optional>
 
+#include "grid-graph.hpp"
 #include "utils.hpp"
 
 using namespace ISPDParser;
@@ -69,7 +70,7 @@ private:
     int k;
     size_t width, height;
     int min_width, min_spacing;
-    std::vector<Edge> vedges, hedges;
+    GridGraph<Edge> grid;
     std::unordered_map<TwoPin*, Box> boxs;
     std::vector<Net> nets;
     std::vector<TwoPin*> twopins;

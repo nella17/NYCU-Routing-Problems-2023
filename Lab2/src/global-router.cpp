@@ -130,19 +130,11 @@ GlobalRouter::Edge& GlobalRouter::getEdge(RPoint rp) {
 }
 
 const GlobalRouter::Edge& GlobalRouter::getEdge(int x, int y, bool hori) const {
-    // std::cerr _ "getEdge" _ x _ y _ hori _ std::endl;
-    if (hori)
-        return hedges.at( (size_t)x * height + (size_t)y );
-    else
-        return vedges.at( (size_t)x + (size_t)y * width );
+    return grid.at(x, y, hori);
 }
 
 GlobalRouter::Edge& GlobalRouter::getEdge(int x, int y, bool hori) {
-    // std::cerr _ "getEdge" _ x _ y _ hori _ std::endl;
-    if (hori)
-        return hedges.at( (size_t)x * height + (size_t)y );
-    else
-        return vedges.at( (size_t)x + (size_t)y * width );
+    return grid.at(x, y, hori);
 }
 
 GlobalRouter::GlobalRouter(ISPDParser::ispdData* _ispdData):
@@ -460,8 +452,7 @@ void GlobalRouter::construct_2D_grid_graph() {
 
     auto verticalCapacity = std::accumulate(ALL(ispdData->verticalCapacity), 0);
     auto horizontalCapacity = std::accumulate(ALL(ispdData->horizontalCapacity), 0);
-    vedges.assign(width * (height - 1), Edge(verticalCapacity));
-    hedges.assign((width - 1) * height, Edge(horizontalCapacity));
+    grid.init(width, height, Edge(verticalCapacity), Edge(horizontalCapacity));
     for (auto capacityAdj: ispdData->capacityAdjs) {
         auto [x1,y1,z1] = capacityAdj->grid1;
         auto [x2,y2,z2] = capacityAdj->grid2;
@@ -551,7 +542,7 @@ void GlobalRouter::preroute() {
     for (auto twopin: twopins)
         place(twopin);
     ripup_place(&GlobalRouter::Lshape, true);
-    for (auto edges: { &vedges, &hedges }) for (auto& edge: *edges)
+    for (auto& edge: grid)
         edge.he = edge.of = 0;
     for (auto twopin: twopins)
         twopin->reroute = 0;
@@ -563,7 +554,7 @@ int GlobalRouter::check_overflow() {
     for (auto twopin: twopins)
         twopin->overflow = 0;
     int mxof = 0, totof = 0;
-    for (auto edges: { &vedges, &hedges }) for (auto& edge: *edges) {
+    for (auto& edge: grid) {
         edge.he += edge.of;
         edge.of = 0;
         edge.overflow = edge.demand > edge.cap;
