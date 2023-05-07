@@ -689,16 +689,6 @@ void GlobalRouter::ripup_place(FP fp, bool all) {
             if (twopin->ripup)
                 place(twopin);
     }
-    /*
-    for (auto twopin: twopins) {
-        if (stop) throw false;
-        if (twopin->overflow) {
-            ripup(twopin);
-            (this->*fp)(twopin);
-            place(twopin);
-        }
-    }
-    */
     if (stop) throw false;
 }
 

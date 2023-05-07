@@ -12,7 +12,7 @@ route() {
   if [ $? ]; then
     echo "$1 done"
     time perl ./eval2008.pl "$in" "$out" 2>&1 | tee -a "$result"
-    tail "$time" | grep user | tee -a "$result" > /dev/null
+    tail "$time" | grep real | tee -a "$result" > /dev/null
     rm "$out"
   else
     echo "route fail"
