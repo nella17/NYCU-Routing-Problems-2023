@@ -562,14 +562,6 @@ void GlobalRouter::preroute() {
     if (print) std::cerr << "[*]" _ "preroute" _ std::endl;
     auto start = std::chrono::steady_clock::now();
     for (auto net: nets) {
-        net->score = 0;
-        for (auto twopin: net->twopins)
-            net->score += twopin->HPWL();
-    }
-    std::sort(ALL(nets), [&](auto a, auto b) {
-        return a->score > b->score;
-    });
-    for (auto net: nets) {
         std::sort(ALL(net->twopins), [&](auto a, auto b) {
             return a->HPWL() < b->HPWL();
         });
@@ -590,11 +582,9 @@ void GlobalRouter::preroute() {
         return a->score > b->score;
     });
     for (auto twopin: twopins) {
-        if (twopin->overflow) {
-            ripup(twopin);
-            monotonic(twopin);
-            place(twopin);
-        }
+        ripup(twopin);
+        Lshape(twopin);
+        place(twopin);
     }
     // ripup_place(&GlobalRouter::Lshape, true);
     for (auto& edge: grid)
