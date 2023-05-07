@@ -48,16 +48,7 @@ int main(int argc, char* const argv []) {
     auto ispdData = parse_input(inputFile);
     std::cerr << "[*] input '" << inputFile << "' costs" _ sec_since(time) << "s" << std::endl;
 
-    GlobalRouter gr(
-        ispdData,
-        { 
-            7, 4,
-            150, 0.3,
-            30, 200,
-            30, 0.2 , 1,
-            5, 30
-        }
-    );
+    GlobalRouter gr(ispdData);
 
     time = std::chrono::steady_clock::now();
     std::condition_variable cv;
@@ -68,7 +59,7 @@ int main(int argc, char* const argv []) {
         std::chrono::duration<double> Ld = time - start;
         {
             auto TispdData = parse_input(inputFile);
-            GlobalRouter Tgr(TispdData, gr.C);
+            GlobalRouter Tgr(TispdData);
             Tgr.print = false;
             Tgr.route(true);
             auto Ls = std::chrono::steady_clock::now();

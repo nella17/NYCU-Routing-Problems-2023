@@ -104,18 +104,18 @@ ld GlobalRouter::cost(int x, int y, bool hori) {
 
 ld GlobalRouter::cost(const Edge& e) const {
     // return std::exp(std::max(0, e.demand - e.cap + 1) * 2);
-    auto dah = pow(e.he, 1.5) / (C[0] + C[1] * std::sqrt(k));
-    auto pe = 1 + C[2] / (1 + std::exp(C[3] * (e.cap - e.demand)));
-    auto be = C[4] + C[5] / std::pow(2, k);
+    auto dah = pow(e.he, 1.5) / (7 + 4 * std::sqrt(k));
+    auto pe = 1 + 150 / (1 + std::exp(0.3 * (e.cap - e.demand)));
+    auto be = 10 + 100 / std::pow(2, k);
     return (1 + dah) * pe + be;
 }
 
 ld GlobalRouter::score(const TwoPin* twopin) const {
-    return C[6] * twopin->overflow + C[7] * twopin->wlen() + C[8] * twopin->reroute;
+    return 30 * twopin->overflow + 1 * twopin->wlen() + 5 * twopin->reroute;
 }
 
 int GlobalRouter::delta(const TwoPin* twopin) const {
-    return (int)C[9] + (int)C[10] / twopin->reroute;
+    return 5 + 30 / twopin->reroute;
 }
 
 const GlobalRouter::Edge& GlobalRouter::getEdge(RPoint rp) const {
@@ -142,8 +142,8 @@ GlobalRouter::Edge& GlobalRouter::getEdge(int x, int y, bool hori) {
         return vedges.at( (size_t)x + (size_t)y * width );
 }
 
-GlobalRouter::GlobalRouter(ISPDParser::ispdData* _ispdData, std::array<ld, C_SIZE> _C): 
-    stop(false), print(true), ispdData(_ispdData), C(_C) {}
+GlobalRouter::GlobalRouter(ISPDParser::ispdData* _ispdData):
+    stop(false), print(true), ispdData(_ispdData) {}
 
 void GlobalRouter::ripup(TwoPin* twopin) {
     assert(!twopin->ripup);

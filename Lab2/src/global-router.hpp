@@ -19,8 +19,6 @@ using namespace ISPDParser;
 
 class GlobalRouter {
 public:
-    static const size_t C_SIZE = 11;
-
     using FP = void (GlobalRouter::*)(TwoPin*);
 
     struct Edge {
@@ -61,9 +59,8 @@ public:
 
     bool stop, print;
     ISPDParser::ispdData* const ispdData;
-    const std::array<ld, C_SIZE> C;
 
-    GlobalRouter(ISPDParser::ispdData*, std::array<ld, C_SIZE>);
+    GlobalRouter(ISPDParser::ispdData*);
 
     void route(bool = false);
     LayerAssignment::Graph* layer_assignment(bool = true);
