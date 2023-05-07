@@ -76,10 +76,10 @@ private:
 
     RPoint make(Point, Point);
     ld cost(const TwoPin*) const;
-    ld cost(Point, Point);
-    ld cost(RPoint) const;
-    ld cost(int, int, bool);
-    ld cost(const Edge&) const;
+    ld cost(int, Point, Point);
+    ld cost(int, RPoint) const;
+    ld cost(int, int, int, bool);
+    ld cost(int, const Edge&) const;
     ld score(const TwoPin*) const;
     int delta(const TwoPin*) const;
 
@@ -94,13 +94,13 @@ private:
     void Lshape(TwoPin*);
     void Zshape(TwoPin*);
 
-    void calcX(BoxCost&, int, int, int);
-    void calcY(BoxCost&, int, int, int);
+    void calcX(int, BoxCost&, int, int, int);
+    void calcY(int, BoxCost&, int, int, int);
 
     void monotonic(TwoPin*);
 
-    void VMR_impl(Point, Point, BoxCost&);
-    void HMR_impl(Point, Point, BoxCost&);
+    void VMR_impl(int, Point, Point, BoxCost&);
+    void HMR_impl(int, Point, Point, BoxCost&);
     void HUM(TwoPin*);
 
     void construct_2D_grid_graph();
@@ -111,5 +111,5 @@ private:
     void ripup_place(FP, bool = false);
     void routing(const char*, FP, int = 1);
 
-    void print_edges();
+    void print_edges(int = -1, int = -1, int = -1, int = -1, int = -1);
 };

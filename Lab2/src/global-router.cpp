@@ -12,9 +12,10 @@ std::ostream& operator<<(std::ostream& os, GlobalRouter::BoxCost& box) {
         for (auto x = box.L; x <= box.R; x++) {
             auto p = box(x,y).from;
             if (p.has_value())
-                std::cerr _ p.value() << box(x,y).cost;
+                std::cerr _ p.value();
             else
-                std::cerr _ "(  S  )       ";
+                std::cerr _ "(  S  )";
+            std::cerr << box(x,y).cost;
         }
         std::cerr _ std::endl;
     }
@@ -80,29 +81,31 @@ RPoint GlobalRouter::make(Point f, Point t) {
 ld GlobalRouter::cost(const TwoPin* twopin) const {
     ld c = 0;
     for (auto rp: twopin->path)
-        c += cost(rp);
+        c += cost(twopin->parNet->id, rp);
     return c;
 }
 
-ld GlobalRouter::cost(Point f, Point t) {
+ld GlobalRouter::cost(int netId, Point f, Point t) {
     auto dx = std::abs(f.x - t.x);
     auto dy = std::abs(f.y - t.y);
     if (dx == 1 and dy == 0)
-        return cost(std::min(f.x, t.x), f.y, 1);
+        return cost(netId, std::min(f.x, t.x), f.y, 1);
     if (dx == 0 and dy == 1)
-        return cost(f.x, std::min(f.y, t.y), 0);
+        return cost(netId, f.x, std::min(f.y, t.y), 0);
     return INFINITY;
 }
 
-ld GlobalRouter::cost(RPoint rp) const {
-    return cost(getEdge(rp));
+ld GlobalRouter::cost(int netId, RPoint rp) const {
+    return cost(netId, getEdge(rp));
 }
 
-ld GlobalRouter::cost(int x, int y, bool hori) {
-    return cost(getEdge(x, y, hori));
+ld GlobalRouter::cost(int netId, int x, int y, bool hori) {
+    return cost(netId, getEdge(x, y, hori));
 }
 
-ld GlobalRouter::cost(const Edge& e) const {
+ld GlobalRouter::cost(int netId, const Edge& e) const {
+    if (e.net.count(netId)) return 1e-5;
+
     // return std::exp(std::max(0, e.demand - e.cap + 1) * 2);
     auto dah = pow(e.he, 1.5) / (7 + 4 * std::sqrt(k));
     auto pe = 1 + 150 / (1 + std::exp(0.3 * (e.cap - e.demand)));
@@ -177,6 +180,7 @@ void GlobalRouter::Lshape(TwoPin* twopin) {
         if (p1.y == p2.y) return Lx(p1.y, p1.x, p2.x, func);
     };
 
+    auto netId = twopin->parNet->id;
     auto& path = twopin->path;
     auto f = twopin->from, t = twopin->to;
     if (f.y > t.y) std::swap(f, t);
@@ -185,7 +189,7 @@ void GlobalRouter::Lshape(TwoPin* twopin) {
     auto Lcost = [&](Point m) {
         ld c = 0;
         auto func = [&](int x, int y, bool hori) {
-            c += cost(x, y, hori);
+            c += cost(netId, x, y, hori);
         };
         L(f, m, func);
         L(m, t, func);
@@ -208,12 +212,12 @@ void GlobalRouter::Zshape(TwoPin* twopin) {
     // TODO
 }
 
-void GlobalRouter::calcX(BoxCost& box, int y, int bx, int ex) {
+void GlobalRouter::calcX(int netId, BoxCost& box, int y, int bx, int ex) {
     auto dx = sign(ex - bx);
     if (dx == 0) return;
     auto pc = box(bx, y).cost;
     for (auto px = bx, x = px+dx; x != ex+dx; px = x, x += dx) {
-        auto cc = pc + cost(std::min(x, px), y, 1);
+        auto cc = pc + cost(netId, std::min(x, px), y, 1);
         auto& data = box(x, y);
         if (data.cost <= cc) {
             cc = data.cost;
@@ -227,12 +231,12 @@ void GlobalRouter::calcX(BoxCost& box, int y, int bx, int ex) {
     }
 }
 
-void GlobalRouter::calcY(BoxCost& box, int x, int by, int ey) {
+void GlobalRouter::calcY(int netId, BoxCost& box, int x, int by, int ey) {
     auto dy = sign(ey - by);
     if (dy == 0) return;
     auto pc = box(x, by).cost;
     for (auto py = by, y = py+dy; y != ey+dy; py = y, y += dy) {
-        auto cc = pc + cost(x, std::min(y, py), 0);
+        auto cc = pc + cost(netId, x, std::min(y, py), 0);
         auto& data = box(x, y);
         if (data.cost <= cc) {
             cc = data.cost;
@@ -247,6 +251,7 @@ void GlobalRouter::calcY(BoxCost& box, int x, int by, int ey) {
 }
 
 void GlobalRouter::monotonic(TwoPin* twopin) {
+    auto netId = twopin->parNet->id;
     auto& path = twopin->path;
     auto f = twopin->from, t = twopin->to;
     if (f.y > t.y) std::swap(f, t);
@@ -257,15 +262,15 @@ void GlobalRouter::monotonic(TwoPin* twopin) {
         .cost = 0,
         .from = std::nullopt,
     };
-    calcX(box, f.y, f.x, t.x);
+    calcX(netId, box, f.y, f.x, t.x);
     auto dy = sign(t.y - f.y);
     for (auto py = f.y, y = py+dy; y != t.y+dy; py = y, y += dy) {
         for (auto x = f.x; x <= t.x; x++)
             box(x, y) = {
-                .cost = box(x, py).cost + cost(x, std::min(y, py), 0),
+                .cost = box(x, py).cost + cost(twopin->parNet->id, x, std::min(y, py), 0),
                 .from = Point(x, py),
             };
-        calcX(box, y, f.x, t.x);
+        calcX(netId, box, y, f.x, t.x);
     }
 
     path.clear();
@@ -283,41 +288,41 @@ void GlobalRouter::monotonic(TwoPin* twopin) {
     }
 }
 
-void GlobalRouter::VMR_impl(Point f, Point t, BoxCost& box) {
+void GlobalRouter::VMR_impl(int netId, Point f, Point t, BoxCost& box) {
     box(f) = {
         .cost = 0,
         .from = std::nullopt,
     };
-    calcX(box, f.y, box.L, box.R);
-    calcX(box, f.y, box.R, box.L);
+    calcX(netId, box, f.y, box.L, box.R);
+    calcX(netId, box, f.y, box.R, box.L);
     auto dy = sign(t.y - f.y);
     for (auto py = f.y, y = py+dy; y != t.y+dy; py = y, y += dy) {
         for (auto x = box.L; x <= box.R; x++)
             box(x, y) = {
-                .cost = box(x, py).cost + cost(x, std::min(y, py), 0),
+                .cost = box(x, py).cost + cost(netId, x, std::min(y, py), 0),
                 .from = Point(x, py),
             };
-        calcX(box, y, box.L, box.R);
-        calcX(box, y, box.R, box.L);
+        calcX(netId, box, y, box.L, box.R);
+        calcX(netId, box, y, box.R, box.L);
     }
 }
 
-void GlobalRouter::HMR_impl(Point f, Point t, BoxCost& box) {
+void GlobalRouter::HMR_impl(int netId, Point f, Point t, BoxCost& box) {
     box(f) = {
         .cost = 0,
         .from = std::nullopt,
     };
-    calcY(box, f.x, box.B, box.U);
-    calcY(box, f.x, box.U, box.B);
+    calcY(netId, box, f.x, box.B, box.U);
+    calcY(netId, box, f.x, box.U, box.B);
     auto dx = sign(t.x - f.x);
     for (auto px = f.x, x = px+dx; x != t.x+dx; px = x, x += dx) {
         for (auto y = box.B; y <= box.U; y++)
             box(x, y) = {
-                .cost = box(px, y).cost + cost(std::min(x, px), y, 1),
+                .cost = box(px, y).cost + cost(netId, std::min(x, px), y, 1),
                 .from = Point(px, y),
             };
-        calcY(box, x, box.B, box.U);
-        calcY(box, x, box.U, box.B);
+        calcY(netId, box, x, box.B, box.U);
+        calcY(netId, box, x, box.U, box.B);
     }
 }
 
@@ -340,22 +345,23 @@ void GlobalRouter::HUM(TwoPin* twopin) {
         }
     }
 
+    auto netId = twopin->parNet->id;
     auto& path = twopin->path;
     auto f = twopin->from, t = twopin->to;
 
     BoxCost CostVF(box), CostHF(box), CostVT(box), CostHT(box);
-    if (std::abs(f.x - t.x) == (int)box.width()) {
-        VMR_impl(f, box.BL(), CostVF); VMR_impl(f, box.UR(), CostVF);
-        VMR_impl(t, box.BL(), CostVT); VMR_impl(t, box.UR(), CostVT);
-    } else if (std::abs(f.y - t.y) == (int)box.height()) {
-        HMR_impl(f, box.BL(), CostHF); HMR_impl(f, box.UR(), CostHF);
-        HMR_impl(t, box.BL(), CostHT); HMR_impl(t, box.UR(), CostHT);
-    } else {
-        VMR_impl(f, box.BL(), CostVF); VMR_impl(f, box.UR(), CostVF);
-        HMR_impl(f, box.BL(), CostHF); HMR_impl(f, box.UR(), CostHF);
-        VMR_impl(t, box.BL(), CostVT); VMR_impl(t, box.UR(), CostVT);
-        HMR_impl(t, box.BL(), CostHT); HMR_impl(t, box.UR(), CostHT);
-    }
+    // if (std::abs(f.x - t.x) == box.R - box.L) {
+    //     HMR_impl(netId, f, box.BL(), CostHF); HMR_impl(netId, f, box.UR(), CostHF);
+    //     HMR_impl(netId, t, box.BL(), CostHT); HMR_impl(netId, t, box.UR(), CostHT);
+    // } else if (std::abs(f.y - t.y) == box.U - box.B) {
+    //     VMR_impl(netId, f, box.BL(), CostVF); VMR_impl(netId, f, box.UR(), CostVF);
+    //     VMR_impl(netId, t, box.BL(), CostVT); VMR_impl(netId, t, box.UR(), CostVT);
+    // } else {
+        VMR_impl(netId, f, box.BL(), CostVF); VMR_impl(netId, f, box.UR(), CostVF);
+        HMR_impl(netId, f, box.BL(), CostHF); HMR_impl(netId, f, box.UR(), CostHF);
+        VMR_impl(netId, t, box.BL(), CostVT); VMR_impl(netId, t, box.UR(), CostVT);
+        HMR_impl(netId, t, box.BL(), CostHT); HMR_impl(netId, t, box.UR(), CostHT);
+    // }
 #ifdef DEBUG
     //*
     std::cerr
@@ -505,20 +511,25 @@ void GlobalRouter::net_decomposition() {
     }
 }
 
-void GlobalRouter::print_edges() {
+void GlobalRouter::print_edges(int netId, int L, int R, int B, int U) {
+    if (L == -1) L = 0;
+    if (R == -1) R = (int)width-1;
+    if (B == -1) B = 0;
+    if (U == -1) U = (int)height-1;
+
     std::cerr << "horizontal edges\n";
-    for (int j = (int)height-1; j >= 0; j--) {
-        for (int i = 0; i+1 < (int)width; i++) {
+    for (int j = U; j >= B; j--) {
+        for (int i = L; i+1 <= R; i++) {
             auto& e = getEdge(i, j, 1);
-            std::cerr _ e.demand <<'/'<< e.cap << '(' << cost(e) << ')';
+            std::cerr _ e.demand <<'/'<< e.cap << '(' << cost(netId, e) << ')';
         }
         std::cerr _ std::endl;
     }
     std::cerr << "vertical edges\n";
-    for (int j = (int)height-2; j >= 0; j--) {
-        for (int i = 0; i < (int)width; i++) {
+    for (int j = U-1; j >= B; j--) {
+        for (int i = L; i <= R; i++) {
             auto& e = getEdge(i, j, 0);
-            std::cerr _ e.demand <<'/'<< e.cap << '(' << cost(e) << ')';
+            std::cerr _ e.demand <<'/'<< e.cap << '(' << cost(netId, e) << ')';
         }
         std::cerr _ std::endl;
     }
@@ -528,10 +539,14 @@ void GlobalRouter::preroute() {
     if (print) std::cerr << "[*]" _ "preroute" _ std::endl;
     auto start = std::chrono::steady_clock::now();
     k = 0;
-    for (auto twopin: twopins) {
-        twopin->ripup = true;
-        Lshape(twopin);
-        // std::cerr _ *twopin _ std::endl;
+    for (auto& net: nets) {
+        for (auto twopin: net.twopins) {
+            twopin->ripup = true;
+            Lshape(twopin);
+            place(twopin);
+        }
+        for (auto twopin: net.twopins)
+            ripup(twopin);
     }
     for (auto twopin: twopins)
         place(twopin);
