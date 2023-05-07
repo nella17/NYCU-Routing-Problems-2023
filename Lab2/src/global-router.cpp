@@ -123,7 +123,7 @@ ld GlobalRouter::score(const TwoPin* twopin) const {
 }
 
 ld GlobalRouter::score(const Net* net) const {
-    return 30 * net->overflow + 1 * net->wlen + 3 * net->reroute;
+    return 30 * net->overflow + 20 * net->overflow_twopin + 1 * net->wlen + 3 * net->reroute;
 }
 
 int GlobalRouter::delta(const TwoPin* twopin) const {
@@ -571,7 +571,7 @@ void GlobalRouter::preroute() {
     });
     for (auto net: nets) {
         std::sort(ALL(net->twopins), [&](auto a, auto b) {
-            return a->HPWL() > b->HPWL();
+            return a->HPWL() < b->HPWL();
         });
         for (auto twopin: net->twopins) {
             twopin->ripup = true;
@@ -658,7 +658,7 @@ void GlobalRouter::ripup_place(FP fp, bool all) {
         if (!(all or net->overflow_twopin)) continue;
         net->reroute++;
         std::sort(ALL(net->twopins), [&](auto a, auto b) {
-            return a->score > b->score;
+            return a->score < b->score;
         });
         for (auto twopin: net->twopins) {
             if (twopin->overflow or all)
