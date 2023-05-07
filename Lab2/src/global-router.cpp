@@ -332,10 +332,18 @@ void GlobalRouter::HUM(TwoPin* twopin) {
     auto f = twopin->from, t = twopin->to;
 
     BoxCost CostVF(box), CostHF(box), CostVT(box), CostHT(box);
-    VMR_impl(f, box.BL(), CostVF); VMR_impl(f, box.UR(), CostVF);
-    HMR_impl(f, box.BL(), CostHF); HMR_impl(f, box.UR(), CostHF);
-    VMR_impl(t, box.BL(), CostVT); VMR_impl(t, box.UR(), CostVT);
-    HMR_impl(t, box.BL(), CostHT); HMR_impl(t, box.UR(), CostHT);
+    if (std::abs(f.x - t.x) == (int)box.width()) {
+        VMR_impl(f, box.BL(), CostVF); VMR_impl(f, box.UR(), CostVF);
+        VMR_impl(t, box.BL(), CostVT); VMR_impl(t, box.UR(), CostVT);
+    } else if (std::abs(f.y - t.y) == (int)box.height()) {
+        HMR_impl(f, box.BL(), CostHF); HMR_impl(f, box.UR(), CostHF);
+        HMR_impl(t, box.BL(), CostHT); HMR_impl(t, box.UR(), CostHT);
+    } else {
+        VMR_impl(f, box.BL(), CostVF); VMR_impl(f, box.UR(), CostVF);
+        HMR_impl(f, box.BL(), CostHF); HMR_impl(f, box.UR(), CostHF);
+        VMR_impl(t, box.BL(), CostVT); VMR_impl(t, box.UR(), CostVT);
+        HMR_impl(t, box.BL(), CostHT); HMR_impl(t, box.UR(), CostHT);
+    }
 #ifdef DEBUG
     //*
     std::cerr
