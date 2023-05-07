@@ -376,7 +376,7 @@ void GlobalRouter::HUM(TwoPin* twopin) {
     trace(CostVT, CostHT);
 }
 
-void GlobalRouter::route(bool preroute) {
+void GlobalRouter::route(bool leave) {
     width  = (size_t)ispdData->numXGrid;
     height = (size_t)ispdData->numYGrid;
     min_width = average(ispdData->minimumWidth);
@@ -386,8 +386,8 @@ void GlobalRouter::route(bool preroute) {
     for (auto net: ispdData->nets)
         for (auto& twopin: net->twopin)
             twopins.emplace_back(&twopin);
-    init();
-    if (preroute) return;
+    preroute();
+    if (leave) return;
     routing("Lshape", &GlobalRouter::Lshape);
     // TODO: Zshape
     routing("monotonic", &GlobalRouter::monotonic, 2);
@@ -424,6 +424,26 @@ void GlobalRouter::construct_2D_grid_graph() {
 
     }), ispdData->nets.end());
     ispdData->numNet = (int)ispdData->nets.size();
+
+    auto verticalCapacity = std::accumulate(ALL(ispdData->verticalCapacity), 0);
+    auto horizontalCapacity = std::accumulate(ALL(ispdData->horizontalCapacity), 0);
+    vedges.assign(width * (height - 1), Edge(verticalCapacity));
+    hedges.assign((width - 1) * height, Edge(horizontalCapacity));
+    for (auto capacityAdj: ispdData->capacityAdjs) {
+        auto [x1,y1,z1] = capacityAdj->grid1;
+        auto [x2,y2,z2] = capacityAdj->grid2;
+        if (z1 != z2) continue;
+        auto z = (size_t)z1 - 1;
+        auto lx = std::min(x1, x2), rx = std::max(x1, x2);
+        auto ly = std::min(y1, y2), ry = std::max(y1, y2);
+        auto dx = rx - lx, dy = ry - ly;
+        if (dx + dy != 1) continue;
+        auto hori = dx;
+        auto& edge = getEdge(lx, ly, hori);
+        auto layerCap = (hori ? ispdData->horizontalCapacity : ispdData->verticalCapacity)[z];
+        edge.cap -= layerCap - capacityAdj->reducedCapacityLevel;
+        // std::cerr _ dx _ dy _ "/" _ lx _ ly _ "/" _ cong.cap _ layerCap _ std::endl;
+    }
 }
 
 void GlobalRouter::net_decomposition() {
@@ -477,28 +497,9 @@ void GlobalRouter::print_edges() {
     }
 }
 
-void GlobalRouter::init() {
-    if (print) std::cerr << "[*]" _ "init" _ std::endl;
+void GlobalRouter::preroute() {
+    if (print) std::cerr << "[*]" _ "preroute" _ std::endl;
     auto start = std::chrono::steady_clock::now();
-    auto verticalCapacity = std::accumulate(ALL(ispdData->verticalCapacity), 0);
-    auto horizontalCapacity = std::accumulate(ALL(ispdData->horizontalCapacity), 0);
-    vedges.assign(width * (height - 1), Edge(verticalCapacity));
-    hedges.assign((width - 1) * height, Edge(horizontalCapacity));
-    for (auto capacityAdj: ispdData->capacityAdjs) {
-        auto [x1,y1,z1] = capacityAdj->grid1;
-        auto [x2,y2,z2] = capacityAdj->grid2;
-        if (z1 != z2) continue;
-        auto z = (size_t)z1 - 1;
-        auto lx = std::min(x1, x2), rx = std::max(x1, x2);
-        auto ly = std::min(y1, y2), ry = std::max(y1, y2);
-        auto dx = rx - lx, dy = ry - ly;
-        if (dx + dy != 1) continue;
-        auto hori = dx;
-        auto& edge = getEdge(lx, ly, hori);
-        auto layerCap = (hori ? ispdData->horizontalCapacity : ispdData->verticalCapacity)[z];
-        edge.cap -= layerCap - capacityAdj->reducedCapacityLevel;
-        // std::cerr _ dx _ dy _ "/" _ lx _ ly _ "/" _ cong.cap _ layerCap _ std::endl;
-    }
     k = 0;
     for (auto twopin: twopins) {
         twopin->ripup = true;

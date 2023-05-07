@@ -98,7 +98,7 @@ private:
 
     void construct_2D_grid_graph();
     void net_decomposition();
-    void init();
+    void preroute();
     int check_overflow();
 
     void ripup_place(FP);
