@@ -108,7 +108,7 @@ private:
     void preroute();
     int check_overflow();
 
-    void ripup_place(FP);
+    void ripup_place(FP, bool = false);
     void routing(const char*, FP, int = 1);
 
     void print_edges();

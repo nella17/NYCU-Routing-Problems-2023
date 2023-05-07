@@ -535,6 +535,7 @@ void GlobalRouter::preroute() {
     }
     for (auto twopin: twopins)
         place(twopin);
+    ripup_place(&GlobalRouter::Lshape, true);
     for (auto edges: { &vedges, &hedges }) for (auto& edge: *edges)
         edge.he = edge.of = 0;
     for (auto twopin: twopins)
@@ -576,11 +577,11 @@ int GlobalRouter::check_overflow() {
     return totof;
 }
 
-void GlobalRouter::ripup_place(FP fp) {
+void GlobalRouter::ripup_place(FP fp, bool all) {
     for (auto& net: nets) {
         net.score = 0;
         for (auto twopin: net.twopins)
-            if (twopin->overflow)
+            if (twopin->overflow or all)
                 net.score += twopin->score = score(twopin);
     }
     std::sort(ALL(nets), [&](auto a, auto b) {
@@ -592,7 +593,7 @@ void GlobalRouter::ripup_place(FP fp) {
             return a->score > b->score;
         });
         for (auto twopin: net.twopins) {
-            if (twopin->overflow)
+            if (twopin->overflow or all)
                 ripup(twopin);
             if (stop) break;
         }
@@ -600,7 +601,7 @@ void GlobalRouter::ripup_place(FP fp) {
         print_edges();
 #endif
         for (auto twopin: net.twopins) {
-            if (twopin->overflow)
+            if (twopin->ripup)
                 (this->*fp)(twopin);
             if (stop) break;
         }
