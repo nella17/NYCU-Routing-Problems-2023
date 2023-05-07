@@ -581,10 +581,11 @@ void GlobalRouter::preroute() {
         for (auto twopin: net->twopins)
             ripup(twopin);
     }
-    for (auto twopin: twopins) {
+    for (auto twopin: twopins)
         place(twopin);
+    check_overflow();
+    for (auto twopin: twopins)
         twopin->score = score(twopin);
-    }
     std::sort(ALL(twopins), [&](auto a, auto b) {
         return a->score > b->score;
     });
