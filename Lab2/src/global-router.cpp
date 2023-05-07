@@ -557,10 +557,21 @@ void GlobalRouter::print_edges(int netId, int L, int R, int B, int U) {
 }
 
 void GlobalRouter::preroute() {
+    k = 0;
     if (print) std::cerr << "[*]" _ "preroute" _ std::endl;
     auto start = std::chrono::steady_clock::now();
-    k = 0;
     for (auto net: nets) {
+        net->score = 0;
+        for (auto twopin: net->twopins)
+            net->score += twopin->HPWL();
+    }
+    std::sort(ALL(nets), [&](auto a, auto b) {
+        return a->score > b->score;
+    });
+    for (auto net: nets) {
+        std::sort(ALL(net->twopins), [&](auto a, auto b) {
+            return a->HPWL() > b->HPWL();
+        });
         for (auto twopin: net->twopins) {
             twopin->ripup = true;
             Lshape(twopin);
