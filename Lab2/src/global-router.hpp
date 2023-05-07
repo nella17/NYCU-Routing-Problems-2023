@@ -28,8 +28,8 @@ public:
         std::unordered_map<int, size_t> net;
         std::unordered_set<TwoPin*> twopins;
         Edge(int);
-        void push(TwoPin*, int, int);
-        void pop (TwoPin*, int, int);
+        bool push(TwoPin*, int, int);
+        bool pop (TwoPin*, int, int);
     };
 
     struct Box {
@@ -52,7 +52,8 @@ public:
     };
 
     struct Net {
-        long double score;
+        int overflow, overflow_twopin, wlen, reroute;
+        long double score, cost;
         ISPDParser::Net* net;
         std::vector<TwoPin*> twopins;
         Net(ISPDParser::Net*);
@@ -62,6 +63,7 @@ public:
     ISPDParser::ispdData* const ispdData;
 
     GlobalRouter(ISPDParser::ispdData*);
+    ~GlobalRouter();
 
     void route(bool = false);
     LayerAssignment::Graph* layer_assignment(bool = true);
@@ -72,8 +74,9 @@ private:
     int min_width, min_spacing;
     GridGraph<Edge> grid;
     std::unordered_map<TwoPin*, Box> boxs;
-    std::vector<Net> nets;
+    std::vector<Net*> nets;
     std::vector<TwoPin*> twopins;
+    std::unordered_map<int, Net*> id2net;
 
     RPoint make(Point, Point);
     ld cost(const TwoPin*) const;
@@ -82,6 +85,7 @@ private:
     ld cost(int, int, int, bool);
     ld cost(int, const Edge&) const;
     ld score(const TwoPin*) const;
+    ld score(const Net*) const;
     int delta(const TwoPin*) const;
 
     const Edge& getEdge(RPoint) const;

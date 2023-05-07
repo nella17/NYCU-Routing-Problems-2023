@@ -24,23 +24,27 @@ std::ostream& operator<<(std::ostream& os, GlobalRouter::BoxCost& box) {
 
 GlobalRouter::Edge::Edge(int _cap): cap(_cap), demand(0), he(1), of(0), net{}, twopins{} {}
 
-void GlobalRouter::Edge::push(TwoPin* twopin, int minw, int mins) {
-    auto [it, insert] = net.try_emplace(twopin->parNet->id, 1);
-    if (!insert)
-        it->second++;
-    else
-        demand += std::max(twopin->parNet->minimumWidth, minw) + mins;
+bool GlobalRouter::Edge::push(TwoPin* twopin, int minw, int mins) {
     assert(twopins.emplace(twopin).second);
     if (twopin->overflow) of++;
+
+    auto [it, insert] = net.try_emplace(twopin->parNet->id, 1);
+    if (!insert) {
+        it->second++;
+        return false;
+    }
+    demand += std::max(twopin->parNet->minimumWidth, minw) + mins;
+    return true;
 }
 
-void GlobalRouter::Edge::pop(TwoPin* twopin, int minw, int mins) {
-    auto it = net.find(twopin->parNet->id);
-    if (--it->second == 0) {
-        net.erase(it);
-        demand -= std::max(twopin->parNet->minimumWidth, minw) + mins;
-    }
+bool GlobalRouter::Edge::pop(TwoPin* twopin, int minw, int mins) {
     assert(twopins.erase(twopin));
+    auto it = net.find(twopin->parNet->id);
+    assert(it != net.end());
+    if (--it->second) return false;
+    net.erase(it);
+    demand -= std::max(twopin->parNet->minimumWidth, minw) + mins;
+    return true;
 }
 
 GlobalRouter::Box::Box(Point f, Point t):
@@ -114,7 +118,11 @@ ld GlobalRouter::cost(int netId, const Edge& e) const {
 }
 
 ld GlobalRouter::score(const TwoPin* twopin) const {
-    return 30 * twopin->overflow + 1 * twopin->wlen() + 5 * twopin->reroute;
+    return 30 * twopin->overflow + 1 * twopin->wlen() + 3 * twopin->reroute;
+}
+
+ld GlobalRouter::score(const Net* net) const {
+    return 30 * net->overflow + 1 * net->wlen + 3 * net->reroute;
 }
 
 int GlobalRouter::delta(const TwoPin* twopin) const {
@@ -140,19 +148,29 @@ GlobalRouter::Edge& GlobalRouter::getEdge(int x, int y, bool hori) {
 GlobalRouter::GlobalRouter(ISPDParser::ispdData* _ispdData):
     stop(false), print(true), ispdData(_ispdData) {}
 
+GlobalRouter::~GlobalRouter() {
+    for (auto net: nets) delete net;
+}
+
 void GlobalRouter::ripup(TwoPin* twopin) {
     assert(!twopin->ripup);
     twopin->ripup = true;
     twopin->reroute++;
+    auto netId = twopin->parNet->id;
+    auto net = id2net[netId];
     for (auto rp: twopin->path)
-        getEdge(rp).pop(twopin, min_width, min_spacing);
+        if (getEdge(rp).pop(twopin, min_width, min_spacing))
+            net->wlen--;
 }
 
 void GlobalRouter::place(TwoPin* twopin) {
     assert(twopin->ripup);
     twopin->ripup = false;
+    auto netId = twopin->parNet->id;
+    auto net = id2net[netId];
     for (auto rp: twopin->path)
-        getEdge(rp).push(twopin, min_width, min_spacing);
+        if (getEdge(rp).push(twopin, min_width, min_spacing))
+            net->wlen++;
 }
 
 void GlobalRouter::Lshape(TwoPin* twopin) {
@@ -404,13 +422,25 @@ void GlobalRouter::route(bool leave) {
     min_spacing = average(ispdData->minimumSpacing);
     construct_2D_grid_graph();
     net_decomposition();
+
+    for (auto net: nets) delete net;
+    nets.clear();
+    nets.reserve(ispdData->nets.size());
+    auto twopin_count = std::accumulate(ALL(ispdData->nets), 0u, [&](auto s, auto net) {
+        return s + net->twopin.size();
+    });
+    twopins.reserve(twopin_count);
     for (auto net: ispdData->nets) {
-        auto& mynet = nets.emplace_back(net);
+        auto mynet = new Net(net);
+        id2net[ net->id ] = mynet;
+        mynet->twopins.reserve(net->twopin.size());
+        nets.emplace_back(mynet);
         for (auto& twopin: net->twopin) {
             twopins.emplace_back(&twopin);
-            mynet.twopins.emplace_back(&twopin);
+            mynet->twopins.emplace_back(&twopin);
         }
     }
+
     preroute();
     if (leave) return;
     routing("Lshape", &GlobalRouter::Lshape, 2);
@@ -530,13 +560,13 @@ void GlobalRouter::preroute() {
     if (print) std::cerr << "[*]" _ "preroute" _ std::endl;
     auto start = std::chrono::steady_clock::now();
     k = 0;
-    for (auto& net: nets) {
-        for (auto twopin: net.twopins) {
+    for (auto net: nets) {
+        for (auto twopin: net->twopins) {
             twopin->ripup = true;
             Lshape(twopin);
             place(twopin);
         }
-        for (auto twopin: net.twopins)
+        for (auto twopin: net->twopins)
             ripup(twopin);
     }
     for (auto twopin: twopins)
@@ -546,11 +576,15 @@ void GlobalRouter::preroute() {
         edge.he = edge.of = 0;
     for (auto twopin: twopins)
         twopin->reroute = 0;
+    for (auto net: nets)
+        net->reroute = 0;
     if (print) std::cerr _ "time" _ sec_since(start) << 's';
     check_overflow();
 }
 
 int GlobalRouter::check_overflow() {
+    for (auto net: nets)
+        net->cost = net->overflow = net->overflow_twopin = 0;
     for (auto twopin: twopins)
         twopin->overflow = 0;
     int mxof = 0, totof = 0;
@@ -562,43 +596,59 @@ int GlobalRouter::check_overflow() {
             auto of = edge.demand - edge.cap;
             totof += of;
             if (of > mxof) mxof = of;
+            for (auto [id, cnt]: edge.net) {
+                auto net = id2net.find(id)->second;
+                net->overflow++;
+                net->cost += cost(-1, edge);
+            }
             for (auto twopin: edge.twopins)
                 twopin->overflow++;
         }
     }
 
-    int cnt = 0, wl = 0;
-    for (auto twopin: twopins) {
-        wl += twopin->wlen();
-        if (twopin->overflow)
-            cnt++;
+    int ofnet = 0, oftp = 0, wl = 0;
+    for (auto net: nets) {
+        wl += net->wlen;
+        if (net->overflow) {
+            ofnet++;
+            for (auto twopin: net->twopins)
+                if (twopin->overflow) {
+                    net->overflow_twopin++;
+                    oftp++;
+                }
+        }
     }
 
     if (print) std::cerr 
         _ "  tot overflow" _ totof
         _ "  mx overflow" _ mxof
         _ "  wirelength" _ wl
-        _ "  of twopin" _ cnt
+        _ "  of net" _ ofnet
+        _ "  of twopin" _ oftp
         _ std::endl;
     return totof;
 }
 
 void GlobalRouter::ripup_place(FP fp, bool all) {
-    for (auto& net: nets) {
-        net.score = 0;
-        for (auto twopin: net.twopins)
+    for (auto net: nets) {
+        net->score = score(net);
+        for (auto twopin: net->twopins)
             if (twopin->overflow or all)
-                net.score += twopin->score = score(twopin);
+                twopin->score = score(twopin);
+            else
+                twopin->score = 0;
     }
     std::sort(ALL(nets), [&](auto a, auto b) {
-        return a.score > b.score;
+        return a->score > b->score;
     });
-    for (auto& net: nets) {
+    for (auto net: nets) {
         if (stop) break;
-        std::sort(ALL(net.twopins), [&](auto a, auto b) {
+        if (!(all or net->overflow_twopin)) continue;
+        net->reroute++;
+        std::sort(ALL(net->twopins), [&](auto a, auto b) {
             return a->score > b->score;
         });
-        for (auto twopin: net.twopins) {
+        for (auto twopin: net->twopins) {
             if (twopin->overflow or all)
                 ripup(twopin);
             if (stop) break;
@@ -606,12 +656,12 @@ void GlobalRouter::ripup_place(FP fp, bool all) {
 #ifdef DEBUG
         print_edges();
 #endif
-        for (auto twopin: net.twopins) {
+        for (auto twopin: net->twopins) {
             if (twopin->ripup)
                 (this->*fp)(twopin);
             if (stop) break;
         }
-        for (auto twopin: net.twopins)
+        for (auto twopin: net->twopins)
             if (twopin->ripup)
                 place(twopin);
     }
