@@ -18,6 +18,8 @@
 
 using namespace ISPDParser;
 
+RPoint make(Point, Point);
+
 class GlobalRouter {
 public:
     using FP = void (GlobalRouter::*)(TwoPin*);
@@ -49,6 +51,7 @@ public:
         BoxCost(const Box&);
         Data& operator()(Point);
         Data& operator()(int,int);
+        void trace(Path&, Point);
     };
 
     struct Net {
@@ -78,7 +81,6 @@ private:
     std::vector<TwoPin*> twopins;
     std::unordered_map<int, Net*> id2net;
 
-    RPoint make(Point, Point);
     ld cost(const TwoPin*) const;
     ld cost(int, Point, Point);
     ld cost(int, RPoint) const;

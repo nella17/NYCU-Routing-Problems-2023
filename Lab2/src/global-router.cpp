@@ -22,6 +22,17 @@ std::ostream& operator<<(std::ostream& os, GlobalRouter::BoxCost& box) {
     return os;
 }
 
+RPoint make(Point f, Point t) {
+    auto dx = std::abs(f.x - t.x);
+    auto dy = std::abs(f.y - t.y);
+    assert(dx + dy == 1);
+    if (dx == 1 and dy == 0)
+        return RPoint(std::min(f.x, t.x), f.y, 1);
+    if (dx == 0 and dy == 1)
+        return RPoint(f.x, std::min(f.y, t.y), 0);
+    __builtin_unreachable();
+}
+
 GlobalRouter::Edge::Edge(int _cap): cap(_cap), demand(0), he(1), of(0), net{}, twopins{} {}
 
 bool GlobalRouter::Edge::push(TwoPin* twopin, int minw, int mins) {
@@ -68,20 +79,24 @@ GlobalRouter::BoxCost::Data& GlobalRouter::BoxCost::operator()(int x, int y) {
     return cost.at(i * height() + j);
 }
 
+void GlobalRouter::BoxCost::trace(Path& path, Point pp) {
+    auto size = path.size() + width() * height();
+    while (true) {
+        auto ocp = operator()(pp).from;
+        if (path.size() > size) {
+            std::cerr _ "path ????" _ std::endl;
+            assert(false);
+        }
+        if (!ocp.has_value()) break;
+        auto cp = ocp.value();
+        path.emplace_back(make(pp, cp));
+        pp = cp;
+    }
+}
+
 GlobalRouter::Net::Net(ISPDParser::Net* n):
     overflow(0), overflow_twopin(0), wlen(0), reroute(0),
     score(0), cost(0), net(n), twopins{} {}
-
-RPoint GlobalRouter::make(Point f, Point t) {
-    auto dx = std::abs(f.x - t.x);
-    auto dy = std::abs(f.y - t.y);
-    assert(dx + dy == 1);
-    if (dx == 1 and dy == 0)
-        return RPoint(std::min(f.x, t.x), f.y, 1);
-    if (dx == 0 and dy == 1)
-        return RPoint(f.x, std::min(f.y, t.y), 0);
-    __builtin_unreachable();
-}
 
 ld GlobalRouter::cost(const TwoPin* twopin) const {
     ld c = 0;
@@ -285,18 +300,7 @@ void GlobalRouter::monotonic(TwoPin* twopin) {
     }
 
     path.clear();
-    Point pp(t);
-    while (true) {
-        auto ocp = box(pp).from;
-        if (path.size() > width * height) {
-            std::cerr _ "path ????" _ std::endl;
-            throw false;
-        }
-        if (!ocp.has_value()) break;
-        auto cp = ocp.value();
-        path.emplace_back(make(pp, cp));
-        pp = cp;
-    }
+    box.trace(path, t);
 }
 
 void GlobalRouter::VMR_impl(int netId, Point f, Point t, BoxCost& box) {
@@ -397,20 +401,10 @@ void GlobalRouter::HUM(TwoPin* twopin) {
     }
     // std::cerr _ mx _ my _ std::endl;
     path.clear();
+    Point m(mx, my);
     auto trace = [&](BoxCost& CostV, BoxCost& CostH) {
         auto& cost = CostV(mx, my).cost < CostH(mx, my).cost ? CostV : CostH;
-        Point pp(mx, my);
-        while (true) {
-            auto ocp = cost(pp).from;
-            if (path.size() > width * height) {
-                std::cerr _ "path ????" _ std::endl;
-                throw false;
-            }
-            if (!ocp.has_value()) break;
-            auto cp = ocp.value();
-            path.emplace_back(make(pp, cp));
-            pp = cp;
-        }
+        cost.trace(path, m);
     };
     trace(CostVF, CostHF);
     trace(CostVT, CostHT);
