@@ -361,18 +361,18 @@ void GlobalRouter::HUM(TwoPin* twopin) {
     auto f = twopin->from, t = twopin->to;
 
     BoxCost CostVF(box), CostHF(box), CostVT(box), CostHT(box);
-    // if (std::abs(f.x - t.x) == box.R - box.L) {
-    //     HMR_impl(netId, f, box.BL(), CostHF); HMR_impl(netId, f, box.UR(), CostHF);
-    //     HMR_impl(netId, t, box.BL(), CostHT); HMR_impl(netId, t, box.UR(), CostHT);
-    // } else if (std::abs(f.y - t.y) == box.U - box.B) {
-    //     VMR_impl(netId, f, box.BL(), CostVF); VMR_impl(netId, f, box.UR(), CostVF);
-    //     VMR_impl(netId, t, box.BL(), CostVT); VMR_impl(netId, t, box.UR(), CostVT);
-    // } else {
+    if (std::abs(f.x - t.x) == box.R - box.L) {
+        HMR_impl(netId, f, box.BL(), CostHF); HMR_impl(netId, f, box.UR(), CostHF);
+        HMR_impl(netId, t, box.BL(), CostHT); HMR_impl(netId, t, box.UR(), CostHT);
+    } else if (std::abs(f.y - t.y) == box.U - box.B) {
+        VMR_impl(netId, f, box.BL(), CostVF); VMR_impl(netId, f, box.UR(), CostVF);
+        VMR_impl(netId, t, box.BL(), CostVT); VMR_impl(netId, t, box.UR(), CostVT);
+    } else {
         VMR_impl(netId, f, box.BL(), CostVF); VMR_impl(netId, f, box.UR(), CostVF);
         HMR_impl(netId, f, box.BL(), CostHF); HMR_impl(netId, f, box.UR(), CostHF);
         VMR_impl(netId, t, box.BL(), CostVT); VMR_impl(netId, t, box.UR(), CostVT);
         HMR_impl(netId, t, box.BL(), CostHT); HMR_impl(netId, t, box.UR(), CostHT);
-    // }
+    }
 #ifdef DEBUG
     //*
     std::cerr
