@@ -340,7 +340,7 @@ void GlobalRouter::HMR_impl(int netId, Point f, Point t, BoxCost& box) {
 void GlobalRouter::HUM(TwoPin* twopin) {
     auto [it,insert] = boxs.try_emplace(twopin, twopin->from, twopin->to);
     auto& box = it->second;
-    if (!insert or true) {
+    if (!insert) {
         // Congestion-aware Bounding Box Expansion
         std::array<int,2> CntOE{ 0, 0 };
         for (auto rp: twopin->path)
@@ -581,9 +581,21 @@ void GlobalRouter::preroute() {
         for (auto twopin: net->twopins)
             ripup(twopin);
     }
-    for (auto twopin: twopins)
+    for (auto twopin: twopins) {
         place(twopin);
-    ripup_place(&GlobalRouter::Lshape, true);
+        twopin->score = score(twopin);
+    }
+    std::sort(ALL(twopins), [&](auto a, auto b) {
+        return a->score > b->score;
+    });
+    for (auto twopin: twopins) {
+        if (twopin->overflow) {
+            ripup(twopin);
+            monotonic(twopin);
+            place(twopin);
+        }
+    }
+    // ripup_place(&GlobalRouter::Lshape, true);
     for (auto& edge: grid)
         edge.he = edge.of = 0;
     for (auto twopin: twopins)
