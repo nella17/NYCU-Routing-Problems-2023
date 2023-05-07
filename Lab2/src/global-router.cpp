@@ -340,7 +340,7 @@ void GlobalRouter::HMR_impl(int netId, Point f, Point t, BoxCost& box) {
 void GlobalRouter::HUM(TwoPin* twopin) {
     auto [it,insert] = boxs.try_emplace(twopin, twopin->from, twopin->to);
     auto& box = it->second;
-    if (!insert) {
+    if (!insert or true) {
         // Congestion-aware Bounding Box Expansion
         std::array<int,2> CntOE{ 0, 0 };
         for (auto rp: twopin->path)
@@ -446,7 +446,7 @@ void GlobalRouter::route(bool leave) {
     if (leave) return;
     routing("Lshape", &GlobalRouter::Lshape, 2);
     // TODO: Zshape
-    routing("monotonic", &GlobalRouter::monotonic, 5);
+    routing("monotonic", &GlobalRouter::monotonic, 3);
     routing("HUM", &GlobalRouter::HUM, INT_MAX);
 }
 
