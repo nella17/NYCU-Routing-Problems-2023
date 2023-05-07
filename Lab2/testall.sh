@@ -1,6 +1,6 @@
 #!/bin/bash
 result=Benchmarks
-tl=$(( 60 * 60 ))
+tl=${1-$((30 * 60))}
 
 function prepend() { while read -r line; do echo "${1}${line}"; done; }
 
@@ -12,7 +12,7 @@ route() {
   if [ $? ]; then
     echo "$1 done"
     time perl ./eval2008.pl "$in" "$out" 2>&1 | tee -a "$result"
-    tail "$time" | tee -a "$result" > /dev/null
+    tail "$time" | grep user | tee -a "$result" > /dev/null
     rm "$out"
   else
     echo "route fail"
