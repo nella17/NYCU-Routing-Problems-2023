@@ -225,7 +225,7 @@ struct TwoPin
     int overflow;
     bool ripup;
     int reroute;
-    long double cost;
+    long double cost, score;
     Path path;
 
     TwoPin(): TwoPin(Point(), Point()) {}
@@ -238,6 +238,7 @@ struct TwoPin
         ripup(false),
         reroute(0),
         cost(0),
+        score(0),
         path{}
     {}
 

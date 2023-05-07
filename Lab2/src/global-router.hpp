@@ -52,6 +52,13 @@ public:
         Data& operator()(int,int);
     };
 
+    struct Net {
+        long double score, cost;
+        ISPDParser::Net* net;
+        std::vector<TwoPin*> twopins;
+        Net(ISPDParser::Net*);
+    };
+
     bool stop, print;
     ISPDParser::ispdData* const ispdData;
     const std::array<ld, C_SIZE> C;
@@ -67,10 +74,11 @@ private:
     int min_width, min_spacing;
     std::vector<Edge> vedges, hedges;
     std::unordered_map<TwoPin*, Box> boxs;
+    std::vector<Net> nets;
     std::vector<TwoPin*> twopins;
 
     RPoint make(Point, Point);
-    ld cost(TwoPin*);
+    ld cost(const TwoPin*);
     ld cost(Point, Point);
     ld cost(RPoint);
     ld cost(int, int, bool);

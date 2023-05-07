@@ -63,6 +63,9 @@ GlobalRouter::BoxCost::Data& GlobalRouter::BoxCost::operator()(int x, int y) {
     return cost.at(i * height() + j);
 }
 
+GlobalRouter::Net::Net(ISPDParser::Net* n):
+    score(0), net(n), twopins{} {}
+
 RPoint GlobalRouter::make(Point f, Point t) {
     auto dx = std::abs(f.x - t.x);
     auto dy = std::abs(f.y - t.y);
@@ -74,7 +77,7 @@ RPoint GlobalRouter::make(Point f, Point t) {
     __builtin_unreachable();
 }
 
-ld GlobalRouter::cost(TwoPin* twopin)  {
+ld GlobalRouter::cost(const TwoPin* twopin)  {
     ld c = 0;
     for (auto rp: twopin->path)
         c += cost(rp);
@@ -383,9 +386,13 @@ void GlobalRouter::route(bool leave) {
     min_spacing = average(ispdData->minimumSpacing);
     construct_2D_grid_graph();
     net_decomposition();
-    for (auto net: ispdData->nets)
-        for (auto& twopin: net->twopin)
+    for (auto net: ispdData->nets) {
+        auto& mynet = nets.emplace_back(net);
+        for (auto& twopin: net->twopin) {
             twopins.emplace_back(&twopin);
+            mynet.twopins.emplace_back(&twopin);
+        }
+    }
     preroute();
     if (leave) return;
     routing("Lshape", &GlobalRouter::Lshape);
@@ -400,7 +407,7 @@ void GlobalRouter::construct_2D_grid_graph() {
     // Convert XY coordinates to grid coordinates
     // Delete nets that have more than 1000 sinks
     // Delete nets that have all pins inside the same tile
-    ispdData->nets.erase(std::remove_if(ALL(ispdData->nets), [&](Net *net) {
+    ispdData->nets.erase(std::remove_if(ALL(ispdData->nets), [&](auto net) {
 
         for (auto &_pin : net->pins) {
 
@@ -508,12 +515,7 @@ void GlobalRouter::preroute() {
     }
     for (auto twopin: twopins)
         place(twopin);
-    for (auto twopin: twopins)
-        twopin->cost = cost(twopin);
-    std::sort(ALL(twopins), [&](auto a, auto b) {
-        return a->cost < b->cost;
-    });
-    // std::shuffle(ALL(twopins), rng);
+    check_overflow();
     ripup_place(&GlobalRouter::Lshape);
     for (auto edges: { &vedges, &hedges }) for (auto& edge: *edges)
         edge.he = edge.of = 0;
@@ -557,6 +559,30 @@ int GlobalRouter::check_overflow() {
 }
 
 void GlobalRouter::ripup_place(FP fp) {
+    for (auto& net: nets) {
+        net.score = 0;
+        for (auto twopin: net.twopins)
+            net.score += twopin->score = score(*twopin);
+    }
+    std::sort(ALL(nets), [&](auto a, auto b) {
+        return a.score > b.score;
+    });
+    for (auto& net: nets) {
+        if (stop) break;
+        std::sort(ALL(net.twopins), [&](auto a, auto b) {
+            return a->score > b->score;
+        });
+        for (auto f: { &GlobalRouter::ripup, fp })
+            for (auto twopin: net.twopins) {
+                if (twopin->overflow)
+                    (this->*f)(twopin);
+                if (stop) break;
+            }
+        for (auto twopin: net.twopins)
+            if (twopin->ripup)
+                place(twopin);
+    }
+    /*
     for (auto twopin: twopins) {
         if (stop) throw false;
         if (twopin->overflow) {
@@ -565,6 +591,8 @@ void GlobalRouter::ripup_place(FP fp) {
             place(twopin);
         }
     }
+    */
+    if (stop) throw false;
 }
 
 void GlobalRouter::routing(const char* name, FP fp, int iteration) {
@@ -572,12 +600,6 @@ void GlobalRouter::routing(const char* name, FP fp, int iteration) {
     auto start = std::chrono::steady_clock::now();
     for (int i = 1; i <= iteration; i++, k++) {
         auto iterstart = std::chrono::steady_clock::now();
-        for (auto twopin: twopins)
-            twopin->cost = cost(twopin);
-        std::sort(ALL(twopins), [&](auto a, auto b) {
-            return score(*a) > score(*b);
-        });
-        // std::shuffle(ALL(twopins), rng);
         ripup_place(fp);
         if (print) std::cerr _ i _ " time" _ sec_since(iterstart) << 's';
         if (check_overflow() == 0) throw true;
