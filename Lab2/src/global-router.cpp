@@ -673,21 +673,23 @@ void GlobalRouter::ripup_place(FP fp, bool all) {
             return a->score < b->score;
         });
         for (auto twopin: net->twopins) {
+            if (stop) break;
             if (twopin->overflow or all)
                 ripup(twopin);
-            if (stop) break;
         }
 #ifdef DEBUG
         print_edges();
 #endif
         for (auto twopin: net->twopins) {
+            if (stop) break;
             if (twopin->ripup)
                 (this->*fp)(twopin);
-            if (stop) break;
         }
-        for (auto twopin: net->twopins)
+        for (auto twopin: net->twopins) {
+            if (stop) break;
             if (twopin->ripup)
                 place(twopin);
+        }
     }
     if (stop) throw false;
 }
