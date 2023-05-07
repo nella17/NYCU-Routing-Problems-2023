@@ -53,7 +53,7 @@ public:
     };
 
     struct Net {
-        long double score, cost;
+        long double score;
         ISPDParser::Net* net;
         std::vector<TwoPin*> twopins;
         Net(ISPDParser::Net*);
@@ -78,15 +78,17 @@ private:
     std::vector<TwoPin*> twopins;
 
     RPoint make(Point, Point);
-    ld cost(const TwoPin*);
+    ld cost(const TwoPin*) const;
     ld cost(Point, Point);
-    ld cost(RPoint);
+    ld cost(RPoint) const;
     ld cost(int, int, bool);
     ld cost(const Edge&) const;
     ld score(const TwoPin*) const;
     int delta(const TwoPin*) const;
 
+    const Edge& getEdge(RPoint) const;
     Edge& getEdge(RPoint);
+    const Edge& getEdge(int, int, bool) const;
     Edge& getEdge(int, int, bool);
 
     void ripup(TwoPin*);

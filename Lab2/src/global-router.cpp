@@ -77,7 +77,7 @@ RPoint GlobalRouter::make(Point f, Point t) {
     __builtin_unreachable();
 }
 
-ld GlobalRouter::cost(const TwoPin* twopin)  {
+ld GlobalRouter::cost(const TwoPin* twopin) const {
     ld c = 0;
     for (auto rp: twopin->path)
         c += cost(rp);
@@ -94,7 +94,7 @@ ld GlobalRouter::cost(Point f, Point t) {
     return INFINITY;
 }
 
-ld GlobalRouter::cost(RPoint rp) {
+ld GlobalRouter::cost(RPoint rp) const {
     return cost(getEdge(rp));
 }
 
@@ -104,7 +104,7 @@ ld GlobalRouter::cost(int x, int y, bool hori) {
 
 ld GlobalRouter::cost(const Edge& e) const {
     // return std::exp(std::max(0, e.demand - e.cap + 1) * 2);
-    auto dah = pow(e.he, 2) / (C[0] + C[1] * std::sqrt(k));
+    auto dah = pow(e.he, 1.5) / (C[0] + C[1] * std::sqrt(k));
     auto pe = 1 + C[2] / (1 + std::exp(C[3] * (e.cap - e.demand)));
     auto be = C[4] + C[5] / std::pow(2, k);
     return (1 + dah) * pe + be;
@@ -118,8 +118,20 @@ int GlobalRouter::delta(const TwoPin* twopin) const {
     return (int)C[9] + (int)C[10] / twopin->reroute;
 }
 
+const GlobalRouter::Edge& GlobalRouter::getEdge(RPoint rp) const {
+    return getEdge(rp.x, rp.y, rp.hori);
+}
+
 GlobalRouter::Edge& GlobalRouter::getEdge(RPoint rp) {
     return getEdge(rp.x, rp.y, rp.hori);
+}
+
+const GlobalRouter::Edge& GlobalRouter::getEdge(int x, int y, bool hori) const {
+    // std::cerr _ "getEdge" _ x _ y _ hori _ std::endl;
+    if (hori)
+        return hedges.at( (size_t)x * height + (size_t)y );
+    else
+        return vedges.at( (size_t)x + (size_t)y * width );
 }
 
 GlobalRouter::Edge& GlobalRouter::getEdge(int x, int y, bool hori) {
@@ -494,7 +506,7 @@ void GlobalRouter::net_decomposition() {
 }
 
 void GlobalRouter::print_edges() {
-    std::cerr << "horizontalCapacity\n";
+    std::cerr << "horizontal edges\n";
     for (int j = (int)height-1; j >= 0; j--) {
         for (int i = 0; i+1 < (int)width; i++) {
             auto& e = getEdge(i, j, 1);
@@ -502,7 +514,7 @@ void GlobalRouter::print_edges() {
         }
         std::cerr _ std::endl;
     }
-    std::cerr << "verticalCapacity\n";
+    std::cerr << "vertical edges\n";
     for (int j = (int)height-2; j >= 0; j--) {
         for (int i = 0; i < (int)width; i++) {
             auto& e = getEdge(i, j, 0);
@@ -566,12 +578,10 @@ int GlobalRouter::check_overflow() {
 
 void GlobalRouter::ripup_place(FP fp) {
     for (auto& net: nets) {
-        net.cost = 0;
         net.score = 0;
-        for (auto twopin: net.twopins) {
-            net.cost += twopin->cost = cost(twopin);
-            net.score += twopin->score = score(twopin);
-        }
+        for (auto twopin: net.twopins)
+            if (twopin->overflow)
+                net.score += twopin->score = score(twopin);
     }
     std::sort(ALL(nets), [&](auto a, auto b) {
         return a.score > b.score;
@@ -581,12 +591,19 @@ void GlobalRouter::ripup_place(FP fp) {
         std::sort(ALL(net.twopins), [&](auto a, auto b) {
             return a->score > b->score;
         });
-        for (auto f: { &GlobalRouter::ripup, fp })
-            for (auto twopin: net.twopins) {
-                if (twopin->overflow)
-                    (this->*f)(twopin);
-                if (stop) break;
-            }
+        for (auto twopin: net.twopins) {
+            if (twopin->overflow)
+                ripup(twopin);
+            if (stop) break;
+        }
+#ifdef DEBUG
+        print_edges();
+#endif
+        for (auto twopin: net.twopins) {
+            if (twopin->overflow)
+                (this->*fp)(twopin);
+            if (stop) break;
+        }
         for (auto twopin: net.twopins)
             if (twopin->ripup)
                 place(twopin);
@@ -612,9 +629,6 @@ void GlobalRouter::routing(const char* name, FP fp, int iteration) {
         ripup_place(fp);
         if (print) std::cerr _ i _ " time" _ sec_since(iterstart) << 's';
         if (check_overflow() == 0) throw true;
-#ifdef DEBUG
-        print_edges();
-#endif
     }
     if (print) std::cerr _ name _ "routing costs" _ sec_since(start) << "s" << std::endl;
 }
