@@ -69,7 +69,8 @@ GlobalRouter::BoxCost::Data& GlobalRouter::BoxCost::operator()(int x, int y) {
 }
 
 GlobalRouter::Net::Net(ISPDParser::Net* n):
-    score(0), net(n), twopins{} {}
+    overflow(0), overflow_twopin(0), wlen(0), reroute(0),
+    score(0), cost(0), net(n), twopins{} {}
 
 RPoint GlobalRouter::make(Point f, Point t) {
     auto dx = std::abs(f.x - t.x);
