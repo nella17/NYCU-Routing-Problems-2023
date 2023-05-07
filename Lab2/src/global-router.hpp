@@ -83,8 +83,8 @@ private:
     ld cost(RPoint);
     ld cost(int, int, bool);
     ld cost(const Edge&) const;
-    ld score(const TwoPin&) const;
-    int delta(const TwoPin&) const;
+    ld score(const TwoPin*) const;
+    int delta(const TwoPin*) const;
 
     Edge& getEdge(RPoint);
     Edge& getEdge(int, int, bool);

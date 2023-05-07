@@ -110,12 +110,12 @@ ld GlobalRouter::cost(const Edge& e) const {
     return (1 + dah) * pe + be;
 }
 
-ld GlobalRouter::score(const TwoPin& twopin) const {
-    return C[6] * twopin.overflow + C[7] * twopin.wlen() + C[8] * twopin.reroute;
+ld GlobalRouter::score(const TwoPin* twopin) const {
+    return C[6] * twopin->overflow + C[7] * twopin->wlen() + C[8] * twopin->reroute;
 }
 
-int GlobalRouter::delta(const TwoPin& twopin) const {
-    return (int)C[9] + (int)C[10] / twopin.reroute;
+int GlobalRouter::delta(const TwoPin* twopin) const {
+    return (int)C[9] + (int)C[10] / twopin->reroute;
 }
 
 GlobalRouter::Edge& GlobalRouter::getEdge(RPoint rp) {
@@ -317,7 +317,7 @@ void GlobalRouter::HUM(TwoPin* twopin) {
         std::array<int,2> CntOE{ 0, 0 };
         for (auto rp: twopin->path)
             CntOE[ rp.hori ] ++;
-        auto d = delta(*twopin);
+        auto d = delta(twopin);
         auto [cV, cH] = CntOE;
         if ((cV != cH ? cV < cH : randint(2))) {
             box.L = std::max(0, box.L - d);
@@ -395,9 +395,9 @@ void GlobalRouter::route(bool leave) {
     }
     preroute();
     if (leave) return;
-    routing("Lshape", &GlobalRouter::Lshape);
+    routing("Lshape", &GlobalRouter::Lshape, 2);
     // TODO: Zshape
-    routing("monotonic", &GlobalRouter::monotonic, 2);
+    routing("monotonic", &GlobalRouter::monotonic, 5);
     routing("HUM", &GlobalRouter::HUM, INT_MAX);
 }
 
@@ -515,8 +515,6 @@ void GlobalRouter::preroute() {
     }
     for (auto twopin: twopins)
         place(twopin);
-    check_overflow();
-    ripup_place(&GlobalRouter::Lshape);
     for (auto edges: { &vedges, &hedges }) for (auto& edge: *edges)
         edge.he = edge.of = 0;
     for (auto twopin: twopins)
@@ -560,9 +558,12 @@ int GlobalRouter::check_overflow() {
 
 void GlobalRouter::ripup_place(FP fp) {
     for (auto& net: nets) {
+        net.cost = 0;
         net.score = 0;
-        for (auto twopin: net.twopins)
-            net.score += twopin->score = score(*twopin);
+        for (auto twopin: net.twopins) {
+            net.cost += twopin->cost = cost(twopin);
+            net.score += twopin->score = score(twopin);
+        }
     }
     std::sort(ALL(nets), [&](auto a, auto b) {
         return a.score > b.score;
