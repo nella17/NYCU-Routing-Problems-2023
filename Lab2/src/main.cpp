@@ -71,7 +71,7 @@ int main(int argc, char* const argv []) {
         }
         std::cerr << "[-] preroute LayerAssignment costs" _ Ld.count() _ "s" _ std::endl;
 
-        auto reserve = Ld * 3 + std::chrono::seconds(5);
+        auto reserve = Ld * 2 + std::chrono::seconds(1);
         auto tl = end - reserve;
         if (gr.stop or cv.wait_until(lk, tl) == std::cv_status::timeout)
             gr.stop = true;
