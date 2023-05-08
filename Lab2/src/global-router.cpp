@@ -128,13 +128,15 @@ ld GlobalRouter::cost(int netId, int x, int y, bool hori) {
 }
 
 ld GlobalRouter::cost(int netId, const Edge& e) const {
-    if (e.net.count(netId)) return 1e-9;
+    if (e.net.count(netId)) return eps;
 
     // return std::exp(std::max(0, e.demand - e.cap + 1) * 2);
     auto dah = pow(e.he, 1.5) / (7 + 4 * std::sqrt(k));
     auto pe = 1 + 150 / (1 + std::exp(500 * (e.cap - e.demand) / mx_cap));
     auto be = 10 + 100 / std::pow(2, k);
-    return (1 + dah) * pe + be;
+    auto c = (1 + dah) * pe + be;
+    if (c < 0) c = eps;
+    return c;
 }
 
 ld GlobalRouter::score(const TwoPin* twopin) const {
@@ -398,11 +400,11 @@ void GlobalRouter::HUM(TwoPin* twopin) {
 
     BoxCost CostVF(box), CostHF(box), CostVT(box), CostHT(box);
     if (std::abs(f.x - t.x) == box.R - box.L) {
-        HMR_impl(netId, f, box.BL(), CostHF); HMR_impl(netId, f, box.UR(), CostHF);
-        HMR_impl(netId, t, box.BL(), CostHT); HMR_impl(netId, t, box.UR(), CostHT);
-    } else if (std::abs(f.y - t.y) == box.U - box.B) {
         VMR_impl(netId, f, box.BL(), CostVF); VMR_impl(netId, f, box.UR(), CostVF);
         VMR_impl(netId, t, box.BL(), CostVT); VMR_impl(netId, t, box.UR(), CostVT);
+    } else if (std::abs(f.y - t.y) == box.U - box.B) {
+        HMR_impl(netId, f, box.BL(), CostHF); HMR_impl(netId, f, box.UR(), CostHF);
+        HMR_impl(netId, t, box.BL(), CostHT); HMR_impl(netId, t, box.UR(), CostHT);
     } else {
         VMR_impl(netId, f, box.BL(), CostVF); VMR_impl(netId, f, box.UR(), CostVF);
         HMR_impl(netId, f, box.BL(), CostHF); HMR_impl(netId, f, box.UR(), CostHF);

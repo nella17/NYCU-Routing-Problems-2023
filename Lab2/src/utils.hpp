@@ -8,6 +8,7 @@
 #define ALL(v) v.begin(),v.end()
 
 using ld = long double;
+constexpr ld eps = 1;
 
 extern std::mt19937 rng;
 
