@@ -63,6 +63,7 @@ bool GlobalRouter::Edge::pop(TwoPin* twopin, int minw, int mins) {
 }
 
 GlobalRouter::Box::Box(Point f, Point t):
+    eL(true), eR(true), eB(true), eU(true),
     L(std::min(f.x, t.x)), R(std::max(f.x, t.x)),
     B(std::min(f.y, t.y)), U(std::max(f.y, t.y)) {}
 
@@ -327,7 +328,7 @@ void GlobalRouter::monotonic(TwoPin* twopin) {
     for (auto py = f.y, y = py+dy; y != t.y+dy; py = y, y += dy) {
         for (auto x = f.x; x <= t.x; x++)
             box(x, y) = {
-                .cost = box(x, py).cost + cost(twopin->parNet->id, x, std::min(y, py), 0),
+                .cost = box(x, py).cost + cost(netId, x, std::min(y, py), 0),
                 .from = Point(x, py),
             };
         calcX(netId, box, y, f.x, t.x);
@@ -387,12 +388,13 @@ void GlobalRouter::HUM(TwoPin* twopin) {
                 CntOE[ rp.hori ] ++;
         auto d = delta(twopin);
         auto [cV, cH] = CntOE;
-        if (cV >= cH) {
-            box.L = std::max(0, box.L - d);
-            box.R = std::min((int)width-1, box.R + d);
+        auto lr = cV != cH ? cV > cH : randint(2);
+        if ((lr and box.width() != width-1) or (!lr and box.height() == height-1)) {
+            if (box.eL) box.L = std::max(0, box.L - d);
+            if (box.eR) box.R = std::min((int)width-1, box.R + d);
         } else {
-            box.B = std::max(0, box.B - d);
-            box.U = std::min((int)height-1, box.U + d);
+            if (box.eB) box.B = std::max(0, box.B - d);
+            if (box.eU) box.U = std::min((int)height-1, box.U + d);
         }
     }
 
@@ -421,10 +423,14 @@ void GlobalRouter::HUM(TwoPin* twopin) {
         _ "CostHT\n" << CostHT
         ; //*/
 #endif
+    auto cF = [&](int x, int y) {
+        return std::min(CostVF(x,y).cost, CostHF(x,y).cost);
+    };
+    auto cT = [&](int x, int y) {
+        return std::min(CostVT(x,y).cost, CostHT(x,y).cost);
+    };
     auto calc = [&](int x, int y) {
-        auto cs = std::min(CostVF(x,y).cost, CostHF(x,y).cost);
-        auto ct = std::min(CostVT(x,y).cost, CostHT(x,y).cost);
-        return cs + ct;
+        return cF(x, y) + cT(x, y);
     };
     auto mx = box.L, my = box.B;
     auto mc = calc(mx, my);
@@ -443,6 +449,22 @@ void GlobalRouter::HUM(TwoPin* twopin) {
     };
     trace(CostVF, CostHF);
     trace(CostVT, CostHT);
+
+    constexpr ld alpha = 1;
+    auto update = [&](bool& expand, int L, int R, int B, int U) {
+        auto ec = calc(L, B);
+        for (int ux = L; ux <= R; ux++) for (int uy = B; uy <= U; uy++)
+            for (int vx = L; vx <= R; vx++) for (int vy = B; vy <= U; vy++) {
+                auto d = std::abs(ux - vx) + std::abs(uy - vy);
+                auto c = cF(ux, uy) + cT(vx, vy) + d * alpha;
+                if (c < ec) ec = c;
+            }
+        expand = mc >= ec;
+    };
+    update(box.eL, box.L, box.L, box.B, box.U);
+    update(box.eR, box.R, box.R, box.B, box.U);
+    update(box.eB, box.L, box.R, box.B, box.B);
+    update(box.eU, box.L, box.R, box.U, box.U);
 }
 
 void GlobalRouter::route(bool leave) {

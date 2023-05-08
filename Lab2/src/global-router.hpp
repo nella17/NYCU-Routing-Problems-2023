@@ -35,6 +35,7 @@ public:
     };
 
     struct Box {
+        bool eL, eR, eB, eU;
         int L, R, B, U;
         Box(Point, Point);
         Point BL() const;
