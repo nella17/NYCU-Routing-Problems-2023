@@ -706,15 +706,14 @@ void GlobalRouter::ripup_place(FP fp) {
     });
     for (auto twopin: twopins) {
         if (stop) break;
-        twopin->overflow = 0;
+        if (twopin->overflow == 0) continue;
         for (auto rp: twopin->path)
-            if (getEdge(rp).overflow())
-                twopin->overflow++;
-        if (twopin->overflow) {
-            ripup(twopin);
-            (this->*fp)(twopin);
-            place(twopin);
-        }
+            if (getEdge(rp).overflow()) {
+                ripup(twopin);
+                (this->*fp)(twopin);
+                place(twopin);
+                break;
+            }
     }
     if (stop) throw false;
 }
