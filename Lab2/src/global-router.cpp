@@ -642,6 +642,8 @@ int GlobalRouter::check_overflow() {
 }
 
 void GlobalRouter::ripup_place(FP fp) {
+    for (auto twopin: twopins)
+        twopin->score = score(twopin);
     std::sort(ALL(twopins), [&](auto a, auto b) {
         return a->score > b->score;
     });
