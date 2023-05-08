@@ -239,7 +239,35 @@ void GlobalRouter::Lshape(TwoPin* twopin) {
 }
 
 void GlobalRouter::Zshape(TwoPin* twopin) {
-    // TODO
+    auto netId = twopin->parNet->id;
+    auto& path = twopin->path;
+    auto f = twopin->from, t = twopin->to;
+    if (f.y > t.y) std::swap(f, t);
+    if (f.x > t.x) std::swap(f, t);
+
+    BoxCost boxH(Box(f, t));
+    boxH(f) = {
+        .cost = 0,
+        .from = std::nullopt,
+    };
+    auto boxV = boxH;
+
+    auto dx = sign(t.x - f.x), dy = sign(t.y - f.y);
+
+    calcX(netId, boxH, f.y, f.x, t.x);
+    for (auto px = f.x, x = px+dx; x != t.x+dx; px = x, x += dx)
+        calcY(netId, boxH, x, f.y, t.y);
+    calcX(netId, boxH, t.y, f.x, t.x);
+
+    calcY(netId, boxV, f.x, f.y, t.y);
+    for (auto py = f.y, y = py+dy; y != t.y+dy; py = y, y += dy)
+        calcX(netId, boxV, y, f.x, t.x);
+    calcY(netId, boxV, t.x, f.y, t.y);
+
+    auto& box = boxV(t).cost < boxH(t).cost ? boxV : boxH;
+
+    path.clear();
+    box.trace(path, t);
 }
 
 void GlobalRouter::calcX(int netId, BoxCost& box, int y, int bx, int ex) {
@@ -443,7 +471,7 @@ void GlobalRouter::route(bool leave) {
     preroute();
     if (leave) return;
     routing("Lshape", &GlobalRouter::Lshape, 2);
-    // TODO: Zshape
+    routing("Zshape", &GlobalRouter::Zshape, 3);
     routing("monotonic", &GlobalRouter::monotonic, 3);
     for (auto twopin: twopins)
         twopin->reroute = 0;
