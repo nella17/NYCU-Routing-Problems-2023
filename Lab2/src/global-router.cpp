@@ -574,10 +574,8 @@ void GlobalRouter::preroute() {
     for (auto twopin: twopins)
         place(twopin);
     check_overflow();
-    for (auto twopin: twopins)
-        twopin->score = score(twopin);
     std::sort(ALL(twopins), [&](auto a, auto b) {
-        return a->score > b->score;
+        return score(a) > score(b);
     });
     for (auto twopin: twopins) {
         ripup(twopin);
@@ -642,10 +640,8 @@ int GlobalRouter::check_overflow() {
 }
 
 void GlobalRouter::ripup_place(FP fp) {
-    for (auto twopin: twopins)
-        twopin->score = score(twopin);
     std::sort(ALL(twopins), [&](auto a, auto b) {
-        return a->score > b->score;
+        return score(a) > score(b);
     });
     for (auto twopin: twopins) {
         if (stop) break;
