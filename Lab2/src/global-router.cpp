@@ -128,11 +128,11 @@ ld GlobalRouter::cost(int netId, int x, int y, bool hori) {
 }
 
 ld GlobalRouter::cost(int netId, const Edge& e) const {
-    if (e.net.count(netId)) return 1e-5;
+    if (e.net.count(netId)) return 1e-9;
 
     // return std::exp(std::max(0, e.demand - e.cap + 1) * 2);
     auto dah = pow(e.he, 1.5) / (7 + 4 * std::sqrt(k));
-    auto pe = 1 + 150 / (1 + std::exp(0.3 * (e.cap - e.demand)));
+    auto pe = 1 + 150 / (1 + std::exp(500 * (e.cap - e.demand) / mx_cap));
     auto be = 10 + 100 / std::pow(2, k);
     return (1 + dah) * pe + be;
 }
@@ -511,6 +511,7 @@ void GlobalRouter::construct_2D_grid_graph() {
 
     auto verticalCapacity = std::accumulate(ALL(ispdData->verticalCapacity), 0);
     auto horizontalCapacity = std::accumulate(ALL(ispdData->horizontalCapacity), 0);
+    mx_cap = std::max(verticalCapacity, horizontalCapacity);
     grid.init(width, height, Edge(verticalCapacity), Edge(horizontalCapacity));
     for (auto capacityAdj: ispdData->capacityAdjs) {
         auto [x1,y1,z1] = capacityAdj->grid1;

@@ -74,7 +74,7 @@ public:
 private:
     int k;
     size_t width, height;
-    int min_width, min_spacing;
+    int min_width, min_spacing, mx_cap;
     GridGraph<Edge> grid;
     std::unordered_map<TwoPin*, Box> boxs;
     std::vector<Net*> nets;
