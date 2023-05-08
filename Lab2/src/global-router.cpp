@@ -385,11 +385,11 @@ void GlobalRouter::HUM(TwoPin* twopin) {
             CntOE[ rp.hori ] ++;
         auto d = delta(twopin);
         auto [cV, cH] = CntOE;
-        if ((cV != cH ? cV < cH : randint(2))) {
+        if (cV <= cH) {
             box.L = std::max(0, box.L - d);
-            box.B = std::max(0, box.B - d);
-        } else {
             box.R = std::min((int)width-1, box.R + d);
+        } else {
+            box.B = std::max(0, box.B - d);
             box.U = std::min((int)height-1, box.U + d);
         }
     }
