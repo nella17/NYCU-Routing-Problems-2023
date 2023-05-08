@@ -29,7 +29,7 @@ public:
         std::unordered_map<int, size_t> net;
         std::unordered_set<TwoPin*> twopins;
         Edge(int);
-        bool overflow() const;
+        bool overflow(int netId = -1) const;
         bool push(TwoPin*, int, int);
         bool pop (TwoPin*, int, int);
     };

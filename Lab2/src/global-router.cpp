@@ -35,8 +35,8 @@ RPoint make(Point f, Point t) {
 
 GlobalRouter::Edge::Edge(int _cap): cap(_cap), demand(0), he(1), of(0), net{}, twopins{} {}
 
-bool GlobalRouter::Edge::overflow() const {
-    return cap < demand;
+bool GlobalRouter::Edge::overflow(int netId) const {
+    return cap < demand + (net.find(netId) == net.end());
 }
 
 bool GlobalRouter::Edge::push(TwoPin* twopin, int minw, int mins) {
@@ -376,16 +376,18 @@ void GlobalRouter::HMR_impl(int netId, Point f, Point t, BoxCost& box) {
 }
 
 void GlobalRouter::HUM(TwoPin* twopin) {
+    auto netId = twopin->parNet->id;
     auto [it,insert] = boxs.try_emplace(twopin, twopin->from, twopin->to);
     auto& box = it->second;
     if (!insert) {
         // Congestion-aware Bounding Box Expansion
         std::array<int,2> CntOE{ 0, 0 };
         for (auto rp: twopin->path)
-            CntOE[ rp.hori ] ++;
+            if (getEdge(rp).overflow(netId))
+                CntOE[ rp.hori ] ++;
         auto d = delta(twopin);
         auto [cV, cH] = CntOE;
-        if (cV <= cH) {
+        if (cV >= cH) {
             box.L = std::max(0, box.L - d);
             box.R = std::min((int)width-1, box.R + d);
         } else {
@@ -394,7 +396,6 @@ void GlobalRouter::HUM(TwoPin* twopin) {
         }
     }
 
-    auto netId = twopin->parNet->id;
     auto& path = twopin->path;
     auto f = twopin->from, t = twopin->to;
 
