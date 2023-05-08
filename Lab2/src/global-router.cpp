@@ -6,6 +6,7 @@
 #include <numeric>
 #include <queue>
 #include <chrono>
+#include <iomanip>
 
 std::ostream& operator<<(std::ostream& os, GlobalRouter::BoxCost& box) {
     for (auto y = box.U; y >= box.B; y--) {
@@ -15,7 +16,7 @@ std::ostream& operator<<(std::ostream& os, GlobalRouter::BoxCost& box) {
                 std::cerr _ p.value();
             else
                 std::cerr _ "(  S  )";
-            std::cerr << box(x,y).cost;
+            std::cerr << std::fixed << std::setprecision(5) << box(x,y).cost;
         }
         std::cerr _ std::endl;
     }
@@ -89,7 +90,7 @@ void GlobalRouter::BoxCost::trace(Path& path, Point pp) {
     while (true) {
         auto ocp = operator()(pp).from;
         if (path.size() > size) {
-            std::cerr _ "path ????" _ std::endl;
+            std::cerr _ "path ????" _ pp _ std::endl;
             assert(false);
         }
         if (!ocp.has_value()) break;
@@ -416,12 +417,14 @@ void GlobalRouter::HUM(TwoPin* twopin) {
     }
 #ifdef DEBUG
     //*
+    std::cerr _ f _ t _ " - " _ box.BL() _ box.UR() _ std::endl;
     std::cerr
         _ "CostVF\n" << CostVF
         _ "CostHF\n" << CostHF
         _ "CostVT\n" << CostVT
         _ "CostHT\n" << CostHT
         ; //*/
+    print_edges(netId, box.L, box.R, box.B, box.U);
 #endif
     auto cF = [&](int x, int y) {
         return std::min(CostVF(x,y).cost, CostHF(x,y).cost);
@@ -597,7 +600,8 @@ void GlobalRouter::print_edges(int netId, int L, int R, int B, int U) {
     for (int j = U; j >= B; j--) {
         for (int i = L; i+1 <= R; i++) {
             auto& e = getEdge(i, j, 1);
-            std::cerr _ e.demand <<'/'<< e.cap << '(' << cost(netId, e) << ')';
+            std::cerr _ '(' << i << ',' << j << ')'
+                << e.demand <<'/'<< e.cap << '(' << cost(netId, e) << ')';
         }
         std::cerr _ std::endl;
     }
@@ -605,7 +609,8 @@ void GlobalRouter::print_edges(int netId, int L, int R, int B, int U) {
     for (int j = U-1; j >= B; j--) {
         for (int i = L; i <= R; i++) {
             auto& e = getEdge(i, j, 0);
-            std::cerr _ e.demand <<'/'<< e.cap << '(' << cost(netId, e) << ')';
+            std::cerr _ '(' << i << ',' << j << ')'
+                << e.demand <<'/'<< e.cap << '(' << cost(netId, e) << ')';
         }
         std::cerr _ std::endl;
     }
