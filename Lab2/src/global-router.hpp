@@ -26,10 +26,10 @@ public:
 
     struct Edge {
         int cap, demand, he, of;
-        bool overflow;
         std::unordered_map<int, size_t> net;
         std::unordered_set<TwoPin*> twopins;
         Edge(int);
+        bool overflow() const;
         bool push(TwoPin*, int, int);
         bool pop (TwoPin*, int, int);
     };
@@ -115,7 +115,7 @@ private:
     void preroute();
     int check_overflow();
 
-    void ripup_place(FP, bool = false);
+    void ripup_place(FP);
     void routing(const char*, FP, int = 1);
 
     void print_edges(int = -1, int = -1, int = -1, int = -1, int = -1);

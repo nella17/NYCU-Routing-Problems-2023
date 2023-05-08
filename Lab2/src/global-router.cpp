@@ -35,6 +35,10 @@ RPoint make(Point f, Point t) {
 
 GlobalRouter::Edge::Edge(int _cap): cap(_cap), demand(0), he(1), of(0), net{}, twopins{} {}
 
+bool GlobalRouter::Edge::overflow() const {
+    return cap < demand;
+}
+
 bool GlobalRouter::Edge::push(TwoPin* twopin, int minw, int mins) {
     assert(twopins.emplace(twopin).second);
     if (twopin->overflow) of++;
@@ -600,8 +604,7 @@ int GlobalRouter::check_overflow() {
     for (auto& edge: grid) {
         edge.he += edge.of;
         edge.of = 0;
-        edge.overflow = edge.demand > edge.cap;
-        if (edge.overflow) {
+        if (edge.overflow()) {
             auto of = edge.demand - edge.cap;
             totof += of;
             if (of > mxof) mxof = of;
@@ -638,42 +641,20 @@ int GlobalRouter::check_overflow() {
     return totof;
 }
 
-void GlobalRouter::ripup_place(FP fp, bool all) {
-    for (auto net: nets) {
-        net->score = score(net);
-        for (auto twopin: net->twopins)
-            if (twopin->overflow or all)
-                twopin->score = score(twopin);
-            else
-                twopin->score = 0;
-    }
-    std::sort(ALL(nets), [&](auto a, auto b) {
+void GlobalRouter::ripup_place(FP fp) {
+    std::sort(ALL(twopins), [&](auto a, auto b) {
         return a->score > b->score;
     });
-    for (auto net: nets) {
+    for (auto twopin: twopins) {
         if (stop) break;
-        if (!(all or net->overflow_twopin)) continue;
-        net->reroute++;
-        std::sort(ALL(net->twopins), [&](auto a, auto b) {
-            return a->score < b->score;
-        });
-        for (auto twopin: net->twopins) {
-            if (stop) break;
-            if (twopin->overflow or all)
-                ripup(twopin);
-        }
-#ifdef DEBUG
-        print_edges();
-#endif
-        for (auto twopin: net->twopins) {
-            if (stop) break;
-            if (twopin->ripup)
-                (this->*fp)(twopin);
-        }
-        for (auto twopin: net->twopins) {
-            if (stop) break;
-            if (twopin->ripup)
-                place(twopin);
+        twopin->overflow = 0;
+        for (auto rp: twopin->path)
+            if (getEdge(rp).overflow())
+                twopin->overflow++;
+        if (twopin->overflow) {
+            ripup(twopin);
+            (this->*fp)(twopin);
+            place(twopin);
         }
     }
     if (stop) throw false;
