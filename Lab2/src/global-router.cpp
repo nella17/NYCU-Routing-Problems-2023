@@ -445,6 +445,8 @@ void GlobalRouter::route(bool leave) {
     routing("Lshape", &GlobalRouter::Lshape, 2);
     // TODO: Zshape
     routing("monotonic", &GlobalRouter::monotonic, 3);
+    for (auto twopin: twopins)
+        twopin->reroute = 0;
     routing("HUM", &GlobalRouter::HUM, INT_MAX);
 }
 
