@@ -133,7 +133,8 @@ ld GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
     if (net and e.net.count(net->id)) return 1;
 
     // return std::exp(std::max(1, e.demand - e.cap + 1) * 2);
-    auto of = e.cap - e.demand - (net ? net->minimumWidth : 0);
+    auto used = !net ? 0 : std::max(net->minimumWidth, min_width) + min_spacing;
+    auto of = e.cap - (e.demand + used);
     auto dah = pow(e.he, 1.5) / (7 + 4 * k);
     auto pe = 1 + 150 / (1 + std::exp(0.3 * of));
     auto be = 10 + 100 / std::pow(2, k);
