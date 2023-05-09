@@ -9,7 +9,9 @@
 
 #include <array>
 #include <vector>
+#include <map>
 #include <unordered_map>
+#include <set>
 #include <unordered_set>
 #include <optional>
 
@@ -26,8 +28,8 @@ public:
 
     struct Edge {
         int cap, demand, he, of;
-        std::unordered_map<int, size_t> net;
-        std::unordered_set<TwoPin*> twopins;
+        std::map<int, size_t> net;
+        std::set<TwoPin*> twopins;
         Edge(int);
         bool overflow(int netId = -1) const;
         bool push(TwoPin*, int, int);

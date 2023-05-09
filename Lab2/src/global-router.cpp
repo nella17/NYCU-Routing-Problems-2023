@@ -134,7 +134,7 @@ ld GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
 
     // return std::exp(std::max(1, e.demand - e.cap + 1) * 2);
     auto of = e.cap - e.demand - (net ? net->minimumWidth : 0);
-    auto dah = pow(e.he, 1) / (7 + 4 * k);
+    auto dah = pow(e.he, 1.5) / (7 + 4 * k);
     auto pe = 1 + 150 / (1 + std::exp(0.3 * of));
     auto be = 10 + 100 / std::pow(2, k);
     auto c = (1 + dah) * pe + be;
@@ -501,7 +501,7 @@ void GlobalRouter::route(bool leave) {
     if (leave) return;
     routing("Lshape", &GlobalRouter::Lshape, 1);
     routing("Zshape", &GlobalRouter::Zshape, 1);
-    routing("monotonic", &GlobalRouter::monotonic, 1);
+    routing("monotonic", &GlobalRouter::monotonic, 3);
     for (auto twopin: twopins)
         twopin->reroute = 0;
     routing("HUM", &GlobalRouter::HUM, INT_MAX);
