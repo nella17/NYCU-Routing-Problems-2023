@@ -6,7 +6,7 @@ function prepend() { while read -r line; do echo "${1}${line}"; done; }
 
 route() {
   in=$1
-  out=$1.out
+  out=$1.all.out
   time=$1.txt
   /usr/bin/time -p ./router "$in" "$out" "$tl" 2>&1 | tee "$time" | prepend "$(basename "$in") "
   if [ $? ]; then
