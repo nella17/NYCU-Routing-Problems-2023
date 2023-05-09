@@ -83,10 +83,10 @@ private:
     std::unordered_map<int, Net*> id2net;
 
     ld cost(const TwoPin*) const;
-    ld cost(int, Point, Point);
-    ld cost(int, RPoint) const;
-    ld cost(int, int, int, bool);
-    ld cost(int, const Edge&) const;
+    ld cost(ISPDParser::Net*, Point, Point);
+    ld cost(ISPDParser::Net*, RPoint) const;
+    ld cost(ISPDParser::Net*, int, int, bool);
+    ld cost(ISPDParser::Net*, const Edge&) const;
     ld score(const TwoPin*) const;
     ld score(const Net*) const;
     int delta(const TwoPin*) const;
@@ -102,13 +102,13 @@ private:
     void Lshape(TwoPin*);
     void Zshape(TwoPin*);
 
-    void calcX(int, BoxCost&, int, int, int);
-    void calcY(int, BoxCost&, int, int, int);
+    void calcX(ISPDParser::Net*, BoxCost&, int, int, int);
+    void calcY(ISPDParser::Net*, BoxCost&, int, int, int);
 
     void monotonic(TwoPin*);
 
-    void VMR_impl(int, Point, Point, BoxCost&);
-    void HMR_impl(int, Point, Point, BoxCost&);
+    void VMR_impl(ISPDParser::Net*, Point, Point, BoxCost&);
+    void HMR_impl(ISPDParser::Net*, Point, Point, BoxCost&);
     void HUM(TwoPin*);
 
     void construct_2D_grid_graph();
@@ -119,5 +119,5 @@ private:
     void ripup_place(FP);
     void routing(const char*, FP, int = 1);
 
-    void print_edges(int = -1, int = -1, int = -1, int = -1, int = -1);
+    void print_edges(ISPDParser::Net* = nullptr, int = -1, int = -1, int = -1, int = -1);
 };
