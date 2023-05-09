@@ -28,8 +28,8 @@ public:
 
     struct Edge {
         int cap, demand, he, of;
-        std::map<int, size_t> net;
-        std::set<TwoPin*> twopins;
+        std::unordered_map<int, size_t> net;
+        std::unordered_set<TwoPin*> twopins;
         Edge(int);
         bool overflow(int netId = -1) const;
         bool push(TwoPin*, int, int);
