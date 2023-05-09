@@ -150,7 +150,7 @@ ld GlobalRouter::score(const Net* net) const {
 }
 
 int GlobalRouter::delta(const TwoPin* twopin) const {
-    return 5 + 30 / twopin->reroute;
+    return 5 + 10 / twopin->reroute;
 }
 
 const GlobalRouter::Edge& GlobalRouter::getEdge(RPoint rp) const {
@@ -382,7 +382,7 @@ void GlobalRouter::HUM(TwoPin* twopin) {
     auto netId = parNet->id;
     auto [it,insert] = boxs.try_emplace(twopin, twopin->from, twopin->to);
     auto& box = it->second;
-    if (!insert) {
+    if (!insert or true) {
         // Congestion-aware Bounding Box Expansion
         std::array<int,2> CntOE{ 0, 0 };
         for (auto rp: twopin->path)
