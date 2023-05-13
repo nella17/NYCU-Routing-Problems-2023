@@ -133,12 +133,9 @@ ld GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
     if (net and e.net.count(net->id)) return 1;
 
     // return std::exp(std::max(1, e.demand - e.cap + 1) * 2);
-    auto demand = e.demand + (!net ? 0 : std::max(net->minimumWidth, min_width) + min_spacing);
-    auto cap = e.cap;
-    auto of = cap - demand;
-
+    auto of = e.cap - e.demand - (net ? net->minimumWidth : 0);
     auto dah = pow(e.he, 1.5) / (7 + 4 * k);
-    auto pe = 1. * demand / cap + 150 / (1 + std::exp(0.3 * of));
+    auto pe = 1 + 150 / (1 + std::exp(0.3 * of));
     auto be = 10 + 100 / std::pow(2, k);
     auto c = (1 + dah) * pe + be;
     return c;
@@ -458,7 +455,7 @@ void GlobalRouter::HUM(TwoPin* twopin) {
     trace(CostVT, CostHT);
 
     constexpr ld alpha = 1;
-    auto update = [&](int L, int R, int B, int U) {
+    auto update = [&](bool& expand, int L, int R, int B, int U) {
         auto ec = calc(L, B);
         for (int ux = L; ux <= R; ux++) for (int uy = B; uy <= U; uy++)
             for (int vx = L; vx <= R; vx++) for (int vy = B; vy <= U; vy++) {
@@ -466,12 +463,12 @@ void GlobalRouter::HUM(TwoPin* twopin) {
                 auto c = cF(ux, uy) + cT(vx, vy) + d * alpha;
                 if (c < ec) ec = c;
             }
-        return ec;
+        expand = mc >= ec;
     };
-    box.eL = update(box.L, box.L, box.B, box.U) <= mc;
-    box.eR = update(box.R, box.R, box.B, box.U) <= mc;
-    box.eB = update(box.L, box.R, box.B, box.B) <= mc;
-    box.eU = update(box.L, box.R, box.U, box.U) <= mc;
+    update(box.eL, box.L, box.L, box.B, box.U);
+    update(box.eR, box.R, box.R, box.B, box.U);
+    update(box.eB, box.L, box.R, box.B, box.B);
+    update(box.eU, box.L, box.R, box.U, box.U);
 }
 
 void GlobalRouter::route(bool leave) {
@@ -504,7 +501,7 @@ void GlobalRouter::route(bool leave) {
     if (leave) return;
     routing("Lshape", &GlobalRouter::Lshape, 1);
     routing("Zshape", &GlobalRouter::Zshape, 1);
-    routing("monotonic", &GlobalRouter::monotonic, 3);
+    routing("monotonic", &GlobalRouter::monotonic, 1);
     for (auto twopin: twopins)
         twopin->reroute = 0;
     routing("HUM", &GlobalRouter::HUM, INT_MAX);
