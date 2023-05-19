@@ -398,7 +398,6 @@ void GlobalRouter::HMR_impl(ISPDParser::Net* net, Point f, Point t, BoxCost& box
 
 void GlobalRouter::HUM(TwoPin* twopin) {
     auto parNet = twopin->parNet;
-    auto netId = parNet->id;
     auto [it,insert] = boxs.try_emplace(twopin, twopin->from, twopin->to);
     auto& box = it->second;
     if (!insert or true) {
