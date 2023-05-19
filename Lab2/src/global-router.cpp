@@ -718,9 +718,8 @@ void GlobalRouter::routing(const char* name, FP fp, int iteration) {
         return score(a) > score(b);
     });
     for (int i = 1; i <= iteration; i++, k++) {
-        auto iterstart = std::chrono::steady_clock::now();
         ripup_place(fp);
-        if (print) std::cerr _ i _ " time" _ sec_since(iterstart) << 's';
+        if (print) std::cerr _ i _ " time" _ sec_since(start) << 's';
         if (check_overflow() == 0) throw true;
     }
     if (print) std::cerr _ name _ "routing costs" _ sec_since(start) << "s" << std::endl;
