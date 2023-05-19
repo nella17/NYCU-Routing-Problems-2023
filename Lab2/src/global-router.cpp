@@ -725,9 +725,9 @@ int GlobalRouter::check_overflow() {
 }
 
 void GlobalRouter::ripup_place(FP fp) {
-    // std::sort(ALL(twopins), [&](auto a, auto b) {
-    //     return score(a) > score(b);
-    // });
+    std::sort(ALL(twopins), [&](auto a, auto b) {
+        return score(a) > score(b);
+    });
     for (auto twopin: twopins) {
         if (stop) break;
         twopin->overflow = false;
