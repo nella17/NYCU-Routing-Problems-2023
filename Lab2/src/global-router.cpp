@@ -135,24 +135,17 @@ ld GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
     // return std::exp(std::max(1, e.demand - e.cap + 1) * 2);
     auto demand = e.demand + (net ? net->minimumWidth + min_spacing : 0);
     auto cap = e.cap;
-    auto of = cap - demand;
-    if (1) {
-        // constexpr int w = 3;
-        auto w = min_net;
-        of /= w;
-        demand /= w;
-        cap /= w;
-    }
+    auto of = demand - cap;
 
     if (selcost == 2) {
         auto dah = pow(e.he, 1.8) / 50;
-        auto pe = 1 + 200 / (1 + std::exp(0.5 * of));
+        auto pe = 1 + 200 / (1 + std::exp(-0.2 * of));
         auto be = 200;
         auto c = (1 + dah) * pe + be;
         return c;
     }
 
-    auto pe = 1 + 200 / (1 + std::exp(0.3 * of));
+    auto pe = 1 + 200 / (1 + std::exp(-0.1 * of));
 
     if (selcost == 1)
         return (demand / (cap + 1.0) + pe + e.he) * 10;
