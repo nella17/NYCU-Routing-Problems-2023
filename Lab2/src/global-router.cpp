@@ -652,21 +652,23 @@ void GlobalRouter::preroute() {
     for (auto twopin: twopins)
         place(twopin);
     check_overflow();
-    std::sort(ALL(twopins), [&](auto a, auto b) {
+    std::sort(ALL(nets), [&](auto a, auto b) {
         return score(a) > score(b);
     });
-    for (auto twopin: twopins) {
-        ripup(twopin);
-        Lshape(twopin);
-        place(twopin);
+    for (auto net: nets) {
+        for (auto twopin: net->twopins)
+            ripup(twopin);
+        for (auto twopin: net->twopins) {
+            Lshape(twopin);
+            place(twopin);
+        }
     }
-    // ripup_place(&GlobalRouter::Lshape, true);
-    // for (auto& edge: grid)
-    //     edge.he = edge.of = 0;
-    // for (auto twopin: twopins)
-    //     twopin->reroute = 0;
-    // for (auto net: nets)
-    //     net->reroute = 0;
+    for (auto& edge: grid)
+        edge.he = edge.of = 0;
+    for (auto twopin: twopins)
+        twopin->reroute = 0;
+    for (auto net: nets)
+        net->reroute = 0;
     if (print) std::cerr _ "time" _ sec_since(start) << 's';
     check_overflow();
 }
