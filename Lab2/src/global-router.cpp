@@ -137,8 +137,8 @@ ld GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
     auto cap = e.cap;
     auto of = cap - demand;
     if (1) {
-        constexpr int w = 3;
-        // auto w = min_width + min_spacing;
+        // constexpr int w = 3;
+        auto w = min_net;
         of /= w;
         demand /= w;
         cap /= w;
@@ -154,9 +154,8 @@ ld GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
 
     auto pe = 1 + 200 / (1 + std::exp(0.3 * of));
 
-    if (selcost == 1) {
-        return (demand / (cap + 1) + pe + e.he) * 10;
-    }
+    if (selcost == 1)
+        return (demand / (cap + 1.0) + pe + e.he) * 10;
 
     return pe * 10 + 200;
 }
@@ -496,6 +495,7 @@ void GlobalRouter::route(bool leave) {
     height = (size_t)ispdData->numYGrid;
     min_width = average(ispdData->minimumWidth);
     min_spacing = average(ispdData->minimumSpacing);
+    min_net = min_width + min_spacing;
     construct_2D_grid_graph();
     net_decomposition();
 
