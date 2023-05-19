@@ -36,8 +36,8 @@ RPoint make(Point f, Point t) {
 
 GlobalRouter::Edge::Edge(int _cap): cap(_cap), demand(0), he(1), of(0), net{}, twopins{} {}
 
-bool GlobalRouter::Edge::overflow(int netId) const {
-    return cap < demand + (net.find(netId) == net.end());
+bool GlobalRouter::Edge::overflow() const {
+    return cap < demand;
 }
 
 bool GlobalRouter::Edge::push(TwoPin* twopin, int minw, int mins) {
@@ -133,12 +133,32 @@ ld GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
     if (net and e.net.count(net->id)) return 1;
 
     // return std::exp(std::max(1, e.demand - e.cap + 1) * 2);
-    auto of = e.cap - e.demand - (net ? net->minimumWidth : 0);
-    auto dah = pow(e.he, 1.5) / (7 + 4 * k);
-    auto pe = 1 + 150 / (1 + std::exp(0.3 * of));
-    auto be = 10 + 100 / std::pow(2, k);
-    auto c = (1 + dah) * pe + be;
-    return c;
+    auto demand = e.demand + (net ? net->minimumWidth + min_spacing : 0);
+    auto cap = e.cap;
+    auto of = cap - demand;
+    if (1) {
+        constexpr int w = 3;
+        // auto w = min_width + min_spacing;
+        of /= w;
+        demand /= w;
+        cap /= w;
+    }
+
+    if (selcost == 2) {
+        auto dah = pow(e.he, 1.8) / 50;
+        auto pe = 1 + 200 / (1 + std::exp(0.5 * of));
+        auto be = 200;
+        auto c = (1 + dah) * pe + be;
+        return c;
+    }
+
+    auto pe = 1 + 200 / (1 + std::exp(0.3 * of));
+
+    if (selcost == 1) {
+        return (demand / (cap + 1) + pe + e.he) * 10;
+    }
+
+    return pe * 10 + 200;
 }
 
 ld GlobalRouter::score(const TwoPin* twopin) const {
@@ -386,7 +406,7 @@ void GlobalRouter::HUM(TwoPin* twopin) {
         // Congestion-aware Bounding Box Expansion
         std::array<int,2> CntOE{ 0, 0 };
         for (auto rp: twopin->path)
-            if (getEdge(rp).overflow(netId))
+            if (getEdge(rp).overflow())
                 CntOE[ rp.hori ] ++;
         auto d = delta(twopin);
         auto [cV, cH] = CntOE;
@@ -497,13 +517,17 @@ void GlobalRouter::route(bool leave) {
         }
     }
 
+    selcost = 0;
     preroute();
     if (leave) return;
+    selcost = 0;
     routing("Lshape", &GlobalRouter::Lshape, 1);
     routing("Zshape", &GlobalRouter::Zshape, 1);
+    selcost = 1;
     routing("monotonic", &GlobalRouter::monotonic, 1);
-    for (auto twopin: twopins)
-        twopin->reroute = 0;
+    // for (auto twopin: twopins)
+    //     twopin->reroute = 0;
+    selcost = 2;
     routing("HUM", &GlobalRouter::HUM, INT_MAX);
 }
 
@@ -645,12 +669,12 @@ void GlobalRouter::preroute() {
         place(twopin);
     }
     // ripup_place(&GlobalRouter::Lshape, true);
-    for (auto& edge: grid)
-        edge.he = edge.of = 0;
-    for (auto twopin: twopins)
-        twopin->reroute = 0;
-    for (auto net: nets)
-        net->reroute = 0;
+    // for (auto& edge: grid)
+    //     edge.he = edge.of = 0;
+    // for (auto twopin: twopins)
+    //     twopin->reroute = 0;
+    // for (auto net: nets)
+    //     net->reroute = 0;
     if (print) std::cerr _ "time" _ sec_since(start) << 's';
     check_overflow();
 }
@@ -702,13 +726,15 @@ int GlobalRouter::check_overflow() {
 }
 
 void GlobalRouter::ripup_place(FP fp) {
-    std::sort(ALL(twopins), [&](auto a, auto b) {
-        return score(a) > score(b);
-    });
+    // std::sort(ALL(twopins), [&](auto a, auto b) {
+    //     return score(a) > score(b);
+    // });
     for (auto twopin: twopins) {
         if (stop) break;
+        twopin->overflow = false;
         for (auto rp: twopin->path)
             if (getEdge(rp).overflow()) {
+                twopin->overflow = true;
                 ripup(twopin);
                 (this->*fp)(twopin);
                 place(twopin);

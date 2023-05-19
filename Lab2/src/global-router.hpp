@@ -29,7 +29,7 @@ public:
         std::unordered_map<int, size_t> net;
         std::unordered_set<TwoPin*> twopins;
         Edge(int);
-        bool overflow(int netId = -1) const;
+        bool overflow() const;
         bool push(TwoPin*, int, int);
         bool pop (TwoPin*, int, int);
     };
@@ -82,6 +82,7 @@ private:
     std::vector<TwoPin*> twopins;
     std::unordered_map<int, Net*> id2net;
 
+    int selcost;
     ld cost(const TwoPin*) const;
     ld cost(ISPDParser::Net*, Point, Point);
     ld cost(ISPDParser::Net*, RPoint) const;
