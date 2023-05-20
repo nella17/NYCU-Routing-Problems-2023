@@ -40,7 +40,7 @@ bool GlobalRouter::Edge::overflow() const {
     return cap < demand;
 }
 
-bool GlobalRouter::Edge::push(TwoPin* twopin, int minw, int mins) {
+bool GlobalRouter::Edge::push(TwoPin* twopin, int /*minw*/, int /*mins*/) {
     assert(twopins.emplace(twopin).second);
     // if (twopin->overflow) of++;
     if (twopin->overflow) he++;
@@ -50,17 +50,19 @@ bool GlobalRouter::Edge::push(TwoPin* twopin, int minw, int mins) {
         it->second++;
         return false;
     }
-    demand += std::max(twopin->parNet->minimumWidth, minw) + mins;
+    // demand += std::max(twopin->parNet->minimumWidth, minw) + mins;
+    demand++;
     return true;
 }
 
-bool GlobalRouter::Edge::pop(TwoPin* twopin, int minw, int mins) {
+bool GlobalRouter::Edge::pop(TwoPin* twopin, int /*minw*/, int /*mins*/) {
     assert(twopins.erase(twopin));
     auto it = net.find(twopin->parNet->id);
     assert(it != net.end());
     if (--it->second) return false;
     net.erase(it);
-    demand -= std::max(twopin->parNet->minimumWidth, minw) + mins;
+    // demand -= std::max(twopin->parNet->minimumWidth, minw) + mins;
+    demand--;
     return true;
 }
 
@@ -134,19 +136,19 @@ ld GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
     if (net and e.net.count(net->id)) return 1;
 
     // return std::exp(std::max(1, e.demand - e.cap + 1) * 2);
-    auto demand = e.demand + (net ? net->minimumWidth + min_spacing : 0);
+    auto demand = e.demand + (net ? 1 : 0);
     auto cap = e.cap;
     auto of = demand - cap;
 
     if (selcost == 2) {
         auto dah = pow(e.he, 1.8) / 50;
-        auto pe = 1 + 200 / (1 + std::exp(-0.2 * of));
+        auto pe = 1 + 200 / (1 + std::exp(-0.5 * of));
         auto be = 200;
         auto c = (1 + dah) * pe + be;
         return c;
     }
 
-    auto pe = 1 + 200 / (1 + std::exp(-0.1 * of));
+    auto pe = 1 + 200 / (1 + std::exp(-0.3 * of));
     if (selcost == 1)
         return(demand / (cap + 1.0) + pe + e.he) * (demand > cap ? 1e6 : 10);
 
@@ -588,6 +590,8 @@ void GlobalRouter::construct_2D_grid_graph() {
 
     auto verticalCapacity = std::accumulate(ALL(ispdData->verticalCapacity), 0);
     auto horizontalCapacity = std::accumulate(ALL(ispdData->horizontalCapacity), 0);
+    verticalCapacity /= min_net;
+    horizontalCapacity /= min_net;
     mx_cap = std::max(verticalCapacity, horizontalCapacity);
     grid.init(width, height, Edge(verticalCapacity), Edge(horizontalCapacity));
     for (auto capacityAdj: ispdData->capacityAdjs) {
@@ -602,7 +606,7 @@ void GlobalRouter::construct_2D_grid_graph() {
         auto hori = dx;
         auto& edge = getEdge(lx, ly, hori);
         auto layerCap = (hori ? ispdData->horizontalCapacity : ispdData->verticalCapacity)[z];
-        edge.cap -= layerCap - capacityAdj->reducedCapacityLevel;
+        edge.cap -= (layerCap - capacityAdj->reducedCapacityLevel) / min_net;
         // std::cerr _ dx _ dy _ "/" _ lx _ ly _ "/" _ cong.cap _ layerCap _ std::endl;
     }
 }
