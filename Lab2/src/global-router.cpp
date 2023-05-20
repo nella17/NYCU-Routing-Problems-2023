@@ -637,14 +637,25 @@ void GlobalRouter::preroute() {
     k = 0;
     if (print) std::cerr << "[*]" _ "preroute" _ std::endl;
     auto start = std::chrono::steady_clock::now();
-    std::sort(ALL(twopins), [&](auto a, auto b) {
+    std::sort(ALL(nets), [&](auto a, auto b) {
         return score(a) > score(b);
     });
-    for (auto twopin: twopins) {
-        twopin->ripup = true;
-        Lshape(twopin);
-        place(twopin);
+    for (auto net: nets) {
+        std::sort(ALL(net->twopins), [&](auto a, auto b) {
+            return score(a) > score(b);
+        });
+        for (auto twopin: net->twopins) {
+            twopin->ripup = true;
+            Lshape(twopin);
+            place(twopin);
+        }
     }
+    for (auto& edge: grid)
+        edge.he = edge.of = 0;
+    for (auto twopin: twopins)
+        twopin->reroute = 0;
+    for (auto net: nets)
+        net->reroute = 0;
     if (print) std::cerr _ "time" _ sec_since(start) << 's';
     check_overflow();
 }
@@ -696,6 +707,9 @@ int GlobalRouter::check_overflow() {
 }
 
 void GlobalRouter::ripup_place(FP fp) {
+    std::sort(ALL(twopins), [&](auto a, auto b) {
+        return score(a) > score(b);
+    });
     for (auto twopin: twopins) {
         if (stop) break;
         twopin->overflow = false;
@@ -714,9 +728,6 @@ void GlobalRouter::ripup_place(FP fp) {
 void GlobalRouter::routing(const char* name, FP fp, int iteration) {
     if (print) std::cerr << "[*]" _ name _ "routing" << std::endl;
     auto start = std::chrono::steady_clock::now();
-    std::sort(ALL(twopins), [&](auto a, auto b) {
-        return score(a) > score(b);
-    });
     for (int i = 1; i <= iteration; i++, k++) {
         ripup_place(fp);
         if (print) std::cerr _ i _ " time" _ sec_since(start) << 's';
