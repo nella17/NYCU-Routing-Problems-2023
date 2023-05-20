@@ -42,7 +42,8 @@ bool GlobalRouter::Edge::overflow() const {
 
 bool GlobalRouter::Edge::push(TwoPin* twopin, int minw, int mins) {
     assert(twopins.emplace(twopin).second);
-    if (twopin->overflow) of++;
+    // if (twopin->overflow) of++;
+    if (twopin->overflow) he++;
 
     auto [it, insert] = net.try_emplace(twopin->parNet->id, 1);
     if (!insert) {
@@ -146,9 +147,8 @@ ld GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
     }
 
     auto pe = 1 + 200 / (1 + std::exp(-0.1 * of));
-
     if (selcost == 1)
-        return (demand / (cap + 1.0) + pe + e.he) * 10;
+        return(demand / (cap + 1.0) + pe + e.he) * (demand > cap ? 1e6 : 10);
 
     return pe * 10 + 200;
 }
@@ -546,9 +546,9 @@ void GlobalRouter::route(bool leave) {
     if (leave) return;
     selcost = 0;
     routing("Lshape", &GlobalRouter::Lshape, 1);
-    routing("Zshape", &GlobalRouter::Zshape, 1);
+    routing("Zshape", &GlobalRouter::Zshape, 2);
     selcost = 1;
-    routing("monotonic", &GlobalRouter::monotonic, 1);
+    routing("monotonic", &GlobalRouter::monotonic, 2);
     // for (auto twopin: twopins)
     //     twopin->reroute = 0;
     selcost = 2;
@@ -694,8 +694,8 @@ int GlobalRouter::check_overflow() {
         twopin->overflow = 0;
     int mxof = 0, totof = 0;
     for (auto& edge: grid) {
-        edge.he += edge.of;
-        edge.of = 0;
+        // edge.he += edge.of;
+        // edge.of = 0;
         if (edge.overflow()) {
             auto of = edge.demand - edge.cap;
             totof += of;
