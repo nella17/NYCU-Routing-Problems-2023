@@ -192,7 +192,7 @@ ld GlobalRouter::score(const TwoPin* twopin) const {
 }
 
 ld GlobalRouter::score(const Net* net) const {
-    return 30 * net->overflow + 20 * net->overflow_twopin + 1 * net->wlen + 3 * net->reroute;
+    return 30 * net->overflow + 20 * net->overflow_twopin + 1 * net->wlen;
 }
 
 int GlobalRouter::delta(const TwoPin* twopin) const {
@@ -679,19 +679,28 @@ void GlobalRouter::preroute() {
     k = 0;
     if (print) std::cerr << "[*]" _ "preroute" _ std::endl;
     auto start = std::chrono::steady_clock::now();
-    if (sort_twopins(0)) { // TODO
+    if (0) { // TODO
+        sort_twopins(0);
         for (auto twopin: twopins) {
             twopin->ripup = true;
             Lshape(twopin);
             place(twopin);
         }
     } else {
-        for (auto net: nets)
+        for (auto net: nets) {
+            net->wlen = 0;
+            for (auto twopin: net->twopins)
+                net->wlen += twopin->HPWL();
+        }
+        sort_twopins(1);
+        for (auto net: nets) {
+            net->wlen = 0;
             for (auto twopin: net->twopins) {
                 twopin->ripup = true;
                 Lshape(twopin);
                 place(twopin);
             }
+        }
     }
     if (print) std::cerr _ "time" _ sec_since(start) << 's';
     check_overflow();
@@ -744,7 +753,8 @@ int GlobalRouter::check_overflow() {
 }
 
 void GlobalRouter::ripup_place(FP fp) {
-    if (sort_twopins(0)) { // TODO
+    if (0) { // TODO
+        sort_twopins(0);
         for (auto twopin: twopins) {
             if (stop) break;
             twopin->overflow = 0;
@@ -758,6 +768,7 @@ void GlobalRouter::ripup_place(FP fp) {
                 }
         }
     } else {
+        sort_twopins(1);
         for (auto net: nets) {
             for (auto twopin: net->twopins) {
                 if (stop) break;
