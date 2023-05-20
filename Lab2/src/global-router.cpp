@@ -153,12 +153,27 @@ ld GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
     return pe * 10 + 200;
 }
 
-void GlobalRouter::sort_twopins() {
-    std::sort(ALL(twopins), [&](auto a, auto b) {
-        auto sa = score(a);
-        auto sb = score(b);
-        return sa != sb ? sa > sb : a->HPWL() > b->HPWL();
-    });
+bool GlobalRouter::sort_twopins(bool sel) {
+    if (sel) {
+        std::sort(ALL(twopins), [&](auto a, auto b) {
+            auto sa = score(a);
+            auto sb = score(b);
+            return sa != sb ? sa > sb : a->HPWL() > b->HPWL();
+        });
+    } else {
+        std::sort(ALL(nets), [&](auto a, auto b) {
+            auto sa = score(a);
+            auto sb = score(b);
+            return sa > sb;
+        });
+        for (auto net: nets)
+            std::sort(ALL(net->twopins), [&](auto a, auto b) {
+                auto sa = score(a);
+                auto sb = score(b);
+                return sa != sb ? sa < sb : a->HPWL() < b->HPWL();
+            });
+    }
+    return sel;
 }
 
 ld GlobalRouter::score(const TwoPin* twopin) const {
@@ -654,11 +669,19 @@ void GlobalRouter::preroute() {
     k = 0;
     if (print) std::cerr << "[*]" _ "preroute" _ std::endl;
     auto start = std::chrono::steady_clock::now();
-    sort_twopins();
-    for (auto twopin: twopins) {
-        twopin->ripup = true;
-        Lshape(twopin);
-        place(twopin);
+    if (sort_twopins(0)) { // TODO
+        for (auto twopin: twopins) {
+            twopin->ripup = true;
+            Lshape(twopin);
+            place(twopin);
+        }
+    } else {
+        for (auto net: nets)
+            for (auto twopin: net->twopins) {
+                twopin->ripup = true;
+                Lshape(twopin);
+                place(twopin);
+            }
     }
     if (print) std::cerr _ "time" _ sec_since(start) << 's';
     check_overflow();
@@ -711,18 +734,43 @@ int GlobalRouter::check_overflow() {
 }
 
 void GlobalRouter::ripup_place(FP fp) {
-    sort_twopins();
-    for (auto twopin: twopins) {
-        if (stop) break;
-        twopin->overflow = false;
-        for (auto rp: twopin->path)
-            if (getEdge(rp).overflow()) {
-                twopin->overflow = true;
-                ripup(twopin);
-                (this->*fp)(twopin);
-                place(twopin);
-                break;
+    if (sort_twopins(0)) { // TODO
+        for (auto twopin: twopins) {
+            if (stop) break;
+            twopin->overflow = 0;
+            for (auto rp: twopin->path)
+                if (getEdge(rp).overflow()) {
+                    twopin->overflow = 1;
+                    ripup(twopin);
+                    (this->*fp)(twopin);
+                    place(twopin);
+                    break;
+                }
+        }
+    } else {
+        for (auto net: nets) {
+            for (auto twopin: net->twopins) {
+                if (stop) break;
+                twopin->overflow = 0;
+                for (auto rp: twopin->path)
+                    if (getEdge(rp).overflow()) {
+                        twopin->overflow = 1;
+                        break;
+                    }
             }
+            for (auto twopin: net->twopins) {
+                if (stop) break;
+                if (twopin->overflow)
+                    ripup(twopin);
+            }
+            for (auto twopin: net->twopins) {
+                if (twopin->ripup) {
+                    (this->*fp)(twopin);
+                    place(twopin);
+                }
+            }
+            if (stop) break;
+        }
     }
     if (stop) throw false;
 }

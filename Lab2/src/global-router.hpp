@@ -89,7 +89,7 @@ private:
     ld cost(ISPDParser::Net*, int, int, bool) const;
     ld cost(ISPDParser::Net*, const Edge&) const;
 
-    void sort_twopins();
+    bool sort_twopins(bool);
     ld score(const TwoPin*) const;
     ld score(const Net*) const;
     int delta(const TwoPin*) const;
