@@ -427,7 +427,7 @@ void GlobalRouter::HUM(TwoPin* twopin) {
     auto parNet = twopin->parNet;
     auto [it,insert] = boxs.try_emplace(twopin, twopin->from, twopin->to);
     auto& box = it->second;
-    if (!insert or true) {
+    if (insert) {
         // Congestion-aware Bounding Box Expansion
         std::array<int,2> CntOE{ 0, 0 };
         for (auto rp: twopin->path)
@@ -435,7 +435,7 @@ void GlobalRouter::HUM(TwoPin* twopin) {
                 CntOE[ rp.hori ] ++;
         auto d = delta(twopin);
         auto [cV, cH] = CntOE;
-        auto lr = cV != cH ? cV > cH : randint(2);
+        auto lr = cV != cH ? cV > cH : randint(2); // TODO
         if ((lr and box.width() != width-1) or (!lr and box.height() == height-1)) {
             if (box.eL) box.L = std::max(0, box.L - d);
             if (box.eR) box.R = std::min((int)width-1, box.R + d);
@@ -443,6 +443,12 @@ void GlobalRouter::HUM(TwoPin* twopin) {
             if (box.eB) box.B = std::max(0, box.B - d);
             if (box.eU) box.U = std::min((int)height-1, box.U + d);
         }
+    } else {
+        auto d = delta(twopin);
+        if (box.eL) box.L = std::max(0, box.L - d);
+        if (box.eR) box.R = std::min((int)width-1, box.R + d);
+        if (box.eB) box.B = std::max(0, box.B - d);
+        if (box.eU) box.U = std::min((int)height-1, box.U + d);
     }
 
     auto& path = twopin->path;
@@ -551,8 +557,8 @@ void GlobalRouter::route(bool leave) {
     routing("Zshape", &GlobalRouter::Zshape, 2);
     selcost = 1;
     routing("monotonic", &GlobalRouter::monotonic, 2);
-    // for (auto twopin: twopins)
-    //     twopin->reroute = 0;
+    for (auto twopin: twopins)
+        twopin->reroute = 0;
     selcost = 2;
     routing("HUM", &GlobalRouter::HUM, INT_MAX);
 }
