@@ -111,7 +111,7 @@ ld GlobalRouter::cost(const TwoPin* twopin) const {
     return c;
 }
 
-ld GlobalRouter::cost(ISPDParser::Net* net, Point f, Point t) {
+ld GlobalRouter::cost(ISPDParser::Net* net, Point f, Point t) const {
     auto dx = std::abs(f.x - t.x);
     auto dy = std::abs(f.y - t.y);
     if (dx == 1 and dy == 0)
@@ -125,7 +125,7 @@ ld GlobalRouter::cost(ISPDParser::Net* net, RPoint rp) const {
     return cost(net, getEdge(rp));
 }
 
-ld GlobalRouter::cost(ISPDParser::Net* net, int x, int y, bool hori) {
+ld GlobalRouter::cost(ISPDParser::Net* net, int x, int y, bool hori) const {
     return cost(net, getEdge(x, y, hori));
 }
 

@@ -84,9 +84,9 @@ private:
 
     int selcost;
     ld cost(const TwoPin*) const;
-    ld cost(ISPDParser::Net*, Point, Point);
+    ld cost(ISPDParser::Net*, Point, Point) const;
     ld cost(ISPDParser::Net*, RPoint) const;
-    ld cost(ISPDParser::Net*, int, int, bool);
+    ld cost(ISPDParser::Net*, int, int, bool) const;
     ld cost(ISPDParser::Net*, const Edge&) const;
     ld score(const TwoPin*) const;
     ld score(const Net*) const;
