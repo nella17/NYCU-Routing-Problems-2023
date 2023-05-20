@@ -183,7 +183,7 @@ ld GlobalRouter::score(const TwoPin* twopin) const {
         return 60 * twopin->overflow + 1 * twopin->wlen();
 
     auto dx = 1 + abs(twopin->from.x - twopin->to.x);
-    auto dy = 1 +abs(twopin->from.y - twopin->to.y);
+    auto dy = 1 + abs(twopin->from.y - twopin->to.y);
 
     if (selcost == 1)
         return 60 * twopin->overflow + (dx * dy);
@@ -279,7 +279,7 @@ void GlobalRouter::Lshape(TwoPin* twopin) {
     Point m1(f.x, t.y), m2(t.x, f.y);
     auto c1 = Lcost(m1), c2 = Lcost(m2);
 
-    auto m = (c1 != c2 ? c1 < c2 : randint(2))  ? m1 : m2;
+    auto m = (c1 != c2 ? c1 < c2 : randint(2)) ? m1 : m2;
 
     path.clear();
     auto func = [&](int x, int y, bool hori) {
@@ -500,7 +500,7 @@ void GlobalRouter::HUM(TwoPin* twopin) {
     trace(CostVT, CostHT);
 
     constexpr ld alpha = 1;
-    auto update = [&](bool& expand, int L, int R, int B, int U) {
+    auto update = [&](int L, int R, int B, int U) {
         auto ec = calc(L, B);
         for (int ux = L; ux <= R; ux++) for (int uy = B; uy <= U; uy++)
             for (int vx = L; vx <= R; vx++) for (int vy = B; vy <= U; vy++) {
@@ -508,12 +508,12 @@ void GlobalRouter::HUM(TwoPin* twopin) {
                 auto c = cF(ux, uy) + cT(vx, vy) + d * alpha;
                 if (c < ec) ec = c;
             }
-        expand = mc >= ec;
+        return mc >= ec;
     };
-    update(box.eL, box.L, box.L, box.B, box.U);
-    update(box.eR, box.R, box.R, box.B, box.U);
-    update(box.eB, box.L, box.R, box.B, box.B);
-    update(box.eU, box.L, box.R, box.U, box.U);
+    box.eL = update(box.L, box.L, box.B, box.U);
+    box.eR = update(box.R, box.R, box.B, box.U);
+    box.eB = update(box.L, box.R, box.B, box.B);
+    box.eU = update(box.L, box.R, box.U, box.U);
 }
 
 void GlobalRouter::route(bool leave) {
