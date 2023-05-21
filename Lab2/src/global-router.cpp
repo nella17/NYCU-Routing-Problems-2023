@@ -156,7 +156,7 @@ ld GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
 }
 
 bool GlobalRouter::sort_twopins(bool sel) {
-    if (sel) {
+    if (!sel) {
         std::sort(ALL(twopins), [&](auto a, auto b) {
             auto sa = score(a);
             auto sb = score(b);
