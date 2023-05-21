@@ -89,6 +89,12 @@ private:
     ld cost(ISPDParser::Net*, int, int, bool) const;
     ld cost(ISPDParser::Net*, const Edge&) const;
 
+    static constexpr int COSTSZ  = 1024;
+    static constexpr int COSTOFF = 256;
+    ld cost_pe[COSTSZ];
+    ld get_cost_pe(int) const;
+    void build_cost_pe();
+
     bool sort_twopins(bool);
     ld score(const TwoPin*) const;
     ld score(const Net*) const;

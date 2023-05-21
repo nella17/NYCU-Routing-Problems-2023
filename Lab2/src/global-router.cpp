@@ -140,19 +140,38 @@ ld GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
     auto cap = e.cap;
     auto of = demand - cap;
 
+    auto pe = get_cost_pe(of);
+
     if (selcost == 2) {
         auto dah = pow(e.he, 1.8) / 50;
-        auto pe = 1 + 200 / (1 + std::exp(-0.5 * of));
         auto be = 200;
         auto c = (1 + dah) * pe + be;
         return c;
     }
 
-    auto pe = 1 + 200 / (1 + std::exp(-0.3 * of));
     if (selcost == 1)
         return(demand / (cap + 1.0) + pe + e.he) * (demand > cap ? 1e6 : 10);
 
     return pe * 10 + 200;
+}
+
+ld GlobalRouter::get_cost_pe(int of) const {
+    auto i = of + COSTOFF;
+    if (i <= 0)
+        return cost_pe[0];
+    if (i >= COSTSZ)
+        return cost_pe[COSTSZ-1];
+    return cost_pe[i];
+}
+
+void GlobalRouter::build_cost_pe() {
+    for (int i = 0; i < COSTSZ; i++) {
+        auto of = i - COSTOFF;
+        if (selcost == 2)
+            cost_pe[i] = 1 + 200 / (1 + std::exp(-0.5 * of));
+        else
+            cost_pe[i] = 1 + 200 / (1 + std::exp(-0.3 * of));
+    }
 }
 
 bool GlobalRouter::sort_twopins(bool sel) {
@@ -799,6 +818,7 @@ void GlobalRouter::ripup_place(FP fp) {
 void GlobalRouter::routing(const char* name, FP fp, int iteration) {
     if (print) std::cerr << "[*]" _ name _ "routing" << std::endl;
     auto start = std::chrono::steady_clock::now();
+    build_cost_pe();
     for (int i = 1; i <= iteration; i++, k++) {
         ripup_place(fp);
         if (print) std::cerr _ i _ " time" _ sec_since(start) << 's';
