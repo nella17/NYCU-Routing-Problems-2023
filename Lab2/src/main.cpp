@@ -15,6 +15,9 @@
 #include <mutex>
 #include <thread>
 
+#include <signal.h>
+#include <unistd.h>
+
 auto parse_input(const char* file) {
     // parse input
     std::ifstream fp(file);
@@ -31,6 +34,9 @@ auto parse_input(const char* file) {
     return ispdData;
 }
 
+void sighandler(int) {
+    _exit(EXIT_SUCCESS);
+}
 
 int main(int argc, char* const argv []) {
     if (argc < 3) {
@@ -43,6 +49,9 @@ int main(int argc, char* const argv []) {
 
     auto start = std::chrono::steady_clock::now();
     auto end = start + std::chrono::seconds(timeLimitSec);
+
+    signal(SIGALRM, sighandler);
+    signal(SIGKILL, sighandler);
 
     auto time = std::chrono::steady_clock::now();
     auto ispdData = parse_input(inputFile);
@@ -71,10 +80,28 @@ int main(int argc, char* const argv []) {
         }
         std::cerr << "[-] preroute LayerAssignment costs" _ Ld.count() _ "s" _ std::endl;
 
-        auto reserve = Ld * 5 + std::chrono::seconds(30);
-        auto tl = end - reserve;
-        if (gr.stop or cv.wait_until(lk, tl) == std::cv_status::timeout)
-            gr.stop = true;
+        auto r1 = Ld * 10 + std::chrono::seconds(120);
+        auto r2 = Ld * 5 + std::chrono::seconds(10);
+
+        if (gr.stop) return;
+
+        if (cv.wait_until(lk, end - r1) != std::cv_status::timeout or gr.stop)
+            return;
+
+        if (!fork()) {
+            auto graph = gr.layer_assignment();
+            graph->output3Dresult(outputFile);
+            std::exit(EXIT_SUCCESS);
+        }
+
+        if (cv.wait_until(lk, end - r2) != std::cv_status::timeout or gr.stop)
+            return;
+        gr.stop = true;
+
+        if (cv.wait_until(lk, end - std::chrono::seconds(2)) == std::cv_status::timeout) {
+            std::cerr _ "force exit :(" _ std::endl;
+            std::exit(EXIT_SUCCESS);
+        }
     }).detach();
 
     try {
