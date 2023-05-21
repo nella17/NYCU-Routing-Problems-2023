@@ -150,7 +150,7 @@ double GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
     }
 
     if (selcost == 1)
-        return(demand / (cap + 1.0) + pe + e.he) * (demand > cap ? 1e6 : 10);
+        return (demand / (cap + 1.0) + pe + e.he) * (demand > cap ? 1e6 : 10);
 
     return pe * 10 + 200;
 }
@@ -347,14 +347,14 @@ void GlobalRouter::calcX(ISPDParser::Net* net, BoxCost& box, int y, int bx, int 
         auto cc = pc + cost(net, std::min(x, px), y, 1);
         auto& data = box(x, y);
         if (data.cost <= cc) {
-            cc = data.cost;
+            pc = data.cost;
         } else {
+            pc = cc;
             data = {
                 .cost = cc,
                 .from = Point(px, y),
             };
         }
-        pc = cc;
     }
 }
 
@@ -366,14 +366,14 @@ void GlobalRouter::calcY(ISPDParser::Net* net, BoxCost& box, int x, int by, int 
         auto cc = pc + cost(net, x, std::min(y, py), 0);
         auto& data = box(x, y);
         if (data.cost <= cc) {
-            cc = data.cost;
+            pc = data.cost;
         } else {
+            pc = cc;
             data = {
                 .cost = cc,
                 .from = Point(x, py),
             };
         }
-        pc = cc;
     }
 }
 
