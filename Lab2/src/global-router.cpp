@@ -804,6 +804,7 @@ void GlobalRouter::ripup_place(FP fp) {
                     ripup(twopin);
             }
             for (auto twopin: net->twopins) {
+                if (stop) break;
                 if (twopin->ripup) {
                     (this->*fp)(twopin);
                     place(twopin);
