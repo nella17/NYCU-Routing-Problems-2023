@@ -29,19 +29,19 @@ public:
         std::unordered_map<int, size_t> net;
         std::unordered_set<TwoPin*> twopins;
         Edge(int);
-        bool overflow() const;
-        bool push(TwoPin*, int, int);
-        bool pop (TwoPin*, int, int);
+        inline bool overflow() const;
+        inline bool push(TwoPin*, int, int);
+        inline bool pop (TwoPin*, int, int);
     };
 
     struct Box {
         bool eL, eR, eB, eU;
         int L, R, B, U;
         Box(Point, Point);
-        Point BL() const;
-        Point UR() const;
-        size_t width() const;
-        size_t height() const;
+        inline Point BL() const;
+        inline Point UR() const;
+        inline size_t width() const;
+        inline size_t height() const;
     };
     struct BoxCost: Box {
         struct Data {
@@ -50,9 +50,9 @@ public:
         };
         std::vector<Data> cost;
         BoxCost(const Box&);
-        Data& operator()(Point);
-        Data& operator()(int,int);
-        void trace(Path&, Point);
+        inline Data& operator()(Point);
+        inline Data& operator()(int,int);
+        inline void trace(Path&, Point);
     };
 
     struct Net {
@@ -83,27 +83,27 @@ private:
     std::unordered_map<int, Net*> id2net;
 
     int selcost;
-    ld cost(const TwoPin*) const;
-    ld cost(ISPDParser::Net*, Point, Point) const;
-    ld cost(ISPDParser::Net*, RPoint) const;
-    ld cost(ISPDParser::Net*, int, int, bool) const;
-    ld cost(ISPDParser::Net*, const Edge&) const;
+    inline ld cost(const TwoPin*) const;
+    inline ld cost(ISPDParser::Net*, Point, Point) const;
+    inline ld cost(ISPDParser::Net*, RPoint) const;
+    inline ld cost(ISPDParser::Net*, int, int, bool) const;
+    inline ld cost(ISPDParser::Net*, const Edge&) const;
 
     static constexpr int COSTSZ  = 1024;
     static constexpr int COSTOFF = 256;
     ld cost_pe[COSTSZ];
-    ld get_cost_pe(int) const;
+    inline ld get_cost_pe(int) const;
     void build_cost_pe();
 
     bool sort_twopins(bool);
-    ld score(const TwoPin*) const;
-    ld score(const Net*) const;
-    int delta(const TwoPin*) const;
+    inline ld score(const TwoPin*) const;
+    inline ld score(const Net*) const;
+    inline int delta(const TwoPin*) const;
 
-    const Edge& getEdge(RPoint) const;
-    Edge& getEdge(RPoint);
-    const Edge& getEdge(int, int, bool) const;
-    Edge& getEdge(int, int, bool);
+    inline const Edge& getEdge(RPoint) const;
+    inline Edge& getEdge(RPoint);
+    inline const Edge& getEdge(int, int, bool) const;
+    inline Edge& getEdge(int, int, bool);
 
     void ripup(TwoPin*);
     void place(TwoPin*);
@@ -111,8 +111,8 @@ private:
     void Lshape(TwoPin*);
     void Zshape(TwoPin*);
 
-    void calcX(ISPDParser::Net*, BoxCost&, int, int, int);
-    void calcY(ISPDParser::Net*, BoxCost&, int, int, int);
+    inline void calcX(ISPDParser::Net*, BoxCost&, int, int, int);
+    inline void calcY(ISPDParser::Net*, BoxCost&, int, int, int);
 
     void monotonic(TwoPin*);
 
