@@ -45,7 +45,7 @@ public:
     };
     struct BoxCost: Box {
         struct Data {
-            ld cost = INFINITY;
+            double cost = INFINITY;
             std::optional<Point> from = std::nullopt;
         };
         std::vector<Data> cost;
@@ -83,21 +83,21 @@ private:
     std::unordered_map<int, Net*> id2net;
 
     int selcost;
-    inline ld cost(const TwoPin*) const;
-    inline ld cost(ISPDParser::Net*, Point, Point) const;
-    inline ld cost(ISPDParser::Net*, RPoint) const;
-    inline ld cost(ISPDParser::Net*, int, int, bool) const;
-    inline ld cost(ISPDParser::Net*, const Edge&) const;
+    inline double cost(const TwoPin*) const;
+    inline double cost(ISPDParser::Net*, Point, Point) const;
+    inline double cost(ISPDParser::Net*, RPoint) const;
+    inline double cost(ISPDParser::Net*, int, int, bool) const;
+    inline double cost(ISPDParser::Net*, const Edge&) const;
 
     static constexpr int COSTSZ  = 1024;
     static constexpr int COSTOFF = 256;
-    ld cost_pe[COSTSZ];
-    inline ld get_cost_pe(int) const;
+    double cost_pe[COSTSZ];
+    inline double get_cost_pe(int) const;
     void build_cost_pe();
 
     bool sort_twopins(bool);
-    inline ld score(const TwoPin*) const;
-    inline ld score(const Net*) const;
+    inline double score(const TwoPin*) const;
+    inline double score(const Net*) const;
     inline int delta(const TwoPin*) const;
 
     inline const Edge& getEdge(RPoint) const;

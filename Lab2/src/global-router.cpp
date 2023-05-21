@@ -107,14 +107,14 @@ GlobalRouter::Net::Net(ISPDParser::Net* n):
     overflow(0), overflow_twopin(0), wlen(0), reroute(0),
     score(0), cost(0), net(n), twopins{} {}
 
-ld GlobalRouter::cost(const TwoPin* twopin) const {
-    ld c = 0;
+double GlobalRouter::cost(const TwoPin* twopin) const {
+    double c = 0;
     for (auto rp: twopin->path)
         c += cost(twopin->parNet, rp);
     return c;
 }
 
-ld GlobalRouter::cost(ISPDParser::Net* net, Point f, Point t) const {
+double GlobalRouter::cost(ISPDParser::Net* net, Point f, Point t) const {
     auto dx = std::abs(f.x - t.x);
     auto dy = std::abs(f.y - t.y);
     if (dx == 1 and dy == 0)
@@ -124,15 +124,15 @@ ld GlobalRouter::cost(ISPDParser::Net* net, Point f, Point t) const {
     return INFINITY;
 }
 
-ld GlobalRouter::cost(ISPDParser::Net* net, RPoint rp) const {
+double GlobalRouter::cost(ISPDParser::Net* net, RPoint rp) const {
     return cost(net, getEdge(rp));
 }
 
-ld GlobalRouter::cost(ISPDParser::Net* net, int x, int y, bool hori) const {
+double GlobalRouter::cost(ISPDParser::Net* net, int x, int y, bool hori) const {
     return cost(net, getEdge(x, y, hori));
 }
 
-ld GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
+double GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
     if (net and e.net.count(net->id)) return 1;
 
     // return std::exp(std::max(1, e.demand - e.cap + 1) * 2);
@@ -155,7 +155,7 @@ ld GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
     return pe * 10 + 200;
 }
 
-ld GlobalRouter::get_cost_pe(int of) const {
+double GlobalRouter::get_cost_pe(int of) const {
     auto i = of + COSTOFF;
     if (i <= 0)
         return cost_pe[0];
@@ -197,7 +197,7 @@ bool GlobalRouter::sort_twopins(bool sel) {
     return sel;
 }
 
-ld GlobalRouter::score(const TwoPin* twopin) const {
+double GlobalRouter::score(const TwoPin* twopin) const {
     if (selcost == 2)
         return 60 * twopin->overflow + 1 * twopin->wlen();
 
@@ -210,7 +210,7 @@ ld GlobalRouter::score(const TwoPin* twopin) const {
     return 100.0 / std::max(dx, dy);
 }
 
-ld GlobalRouter::score(const Net* net) const {
+double GlobalRouter::score(const Net* net) const {
     return 30 * net->overflow + 20 * net->overflow_twopin + 1 * net->wlen;
 }
 
@@ -286,7 +286,7 @@ void GlobalRouter::Lshape(TwoPin* twopin) {
     if (f.x > t.x) std::swap(f, t);
 
     auto Lcost = [&](Point m) {
-        ld c = 0;
+        double c = 0;
         auto func = [&](int x, int y, bool hori) {
             c += cost(parNet, x, y, hori);
         };
@@ -525,7 +525,7 @@ void GlobalRouter::HUM(TwoPin* twopin) {
     trace(CostVF, CostHF);
     trace(CostVT, CostHT);
 
-    constexpr ld alpha = 1;
+    constexpr double alpha = 1;
     auto update = [&](int L, int R, int B, int U) {
         auto ec = calc(L, B);
         for (int ux = L; ux <= R; ux++) for (int uy = B; uy <= U; uy++)
