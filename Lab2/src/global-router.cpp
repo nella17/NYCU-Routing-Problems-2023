@@ -390,14 +390,24 @@ void GlobalRouter::monotonic(TwoPin* twopin) {
         .from = std::nullopt,
     };
     calcX(parNet, box, f.y, f.x, t.x);
+    calcY(parNet, box, f.x, f.y, t.y);
     auto dy = sign(t.y - f.y);
     for (auto py = f.y, y = py+dy; y != t.y+dy; py = y, y += dy) {
-        for (auto x = f.x; x <= t.x; x++)
-            box(x, y) = {
-                .cost = box(x, py).cost + cost(parNet, x, std::min(y, py), 0),
-                .from = Point(x, py),
-            };
-        calcX(parNet, box, y, f.x, t.x);
+        for (auto px = f.x, x = px+1; x <= t.x; px = x, x++) {
+            auto cx = box(x, py).cost + cost(parNet, x, std::min(y, py), 0);
+            auto cy = box(px, y).cost + cost(parNet, px, y, 1);
+            auto sx = cx != cy ? cx < cy : randint(2);
+            if (sx)
+                box(x, y) = {
+                    .cost = cx,
+                    .from = Point(x, py),
+                };
+            else
+                box(x, y) = {
+                    .cost = cy,
+                    .from = Point(px, y),
+                };
+        }
     }
 
     path.clear();
