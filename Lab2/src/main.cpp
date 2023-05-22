@@ -89,19 +89,19 @@ int main(int argc, char* const argv []) {
             return;
 
         if (!fork()) {
-            auto graph = gr.layer_assignment();
-            graph->output3Dresult(outputFile);
-            std::exit(EXIT_SUCCESS);
+            gr.stop = true;
+            return;
         }
 
         if (cv.wait_until(lk, end - r2) != std::cv_status::timeout or gr.stop)
             return;
         gr.stop = true;
 
-        if (cv.wait_until(lk, end - std::chrono::seconds(2)) == std::cv_status::timeout) {
-            std::cerr _ "force exit :(" _ std::endl;
-            std::exit(EXIT_SUCCESS);
-        }
+        if (cv.wait_until(lk, end - std::chrono::seconds(1)) != std::cv_status::timeout)
+            return;
+
+        std::cerr _ "force exit :(" _ std::endl;
+        _exit(EXIT_SUCCESS);
     }).detach();
 
     try {
@@ -125,7 +125,7 @@ int main(int argc, char* const argv []) {
     delete graph;
     delete ispdData;
 
-    std::exit(EXIT_SUCCESS);
+    _exit(EXIT_SUCCESS);
 
     return 0;
 }

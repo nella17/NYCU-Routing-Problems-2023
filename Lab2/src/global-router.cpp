@@ -149,8 +149,8 @@ double GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
         return c;
     }
 
-    if (selcost == 1)
-        return (demand / (cap + 1.0) + pe + e.he) * (demand > cap ? 1e6 : 10);
+    // if (selcost == 1)
+    //     return (demand / (cap + 1.0) + pe + e.he) * (demand > cap ? 1e6 : 10);
 
     return pe * 10 + 200;
 }
@@ -165,12 +165,20 @@ double GlobalRouter::get_cost_pe(int of) const {
 }
 
 void GlobalRouter::build_cost_pe() {
+    constexpr double z = 200;
     for (int i = 0; i < COSTSZ; i++) {
         auto of = i - COSTOFF;
-        if (selcost == 2)
-            cost_pe[i] = 1 + 200 / (1 + std::exp(-0.5 * of));
-        else
-            cost_pe[i] = 1 + 200 / (1 + std::exp(-0.3 * of));
+        switch (selcost) {
+        case 0:
+            cost_pe[i] = 1 + z / (1 + std::exp(-0.3 * of));
+            break;
+        case 1:
+            cost_pe[i] = 1 + z / (1 + std::exp(-0.5 * of));
+            break;
+        case 2:
+            cost_pe[i] = 1 + z / (1 + std::exp(-0.7 * of));
+            break;
+        }
     }
 }
 
@@ -211,11 +219,15 @@ double GlobalRouter::score(const TwoPin* twopin) const {
 }
 
 double GlobalRouter::score(const Net* net) const {
-    return 30 * net->overflow + 20 * net->overflow_twopin + 1 * net->wlen;
+    return 3000 * net->overflow + net->overflow_twopin + net->cost;
 }
 
 int GlobalRouter::delta(const TwoPin* twopin) const {
-    return 16 + 24 / twopin->reroute;
+    if (twopin->reroute <= 2)
+        return 5;
+    if (twopin->reroute <= 6)
+        return 20;
+    return 15;
 }
 
 const GlobalRouter::Edge& GlobalRouter::getEdge(RPoint rp) const {
