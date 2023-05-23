@@ -34,7 +34,10 @@ RPoint make(Point f, Point t) {
     __builtin_unreachable();
 }
 
-GlobalRouter::Edge::Edge(int _cap): cap(_cap), demand(0), he(1), of(0), net{}, twopins{} {}
+GlobalRouter::Edge::Edge(int _cap): cap(_cap), demand(0), he(1), of(0), net{}, twopins{} {
+    net.max_load_factor(0.25);
+    twopins.max_load_factor(0.25);
+}
 
 bool GlobalRouter::Edge::overflow() const {
     return cap < demand;
