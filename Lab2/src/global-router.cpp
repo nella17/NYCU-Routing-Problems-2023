@@ -219,7 +219,7 @@ double GlobalRouter::score(const TwoPin* twopin) const {
 }
 
 double GlobalRouter::score(const Net* net) const {
-    return 3000 * net->overflow + net->overflow_twopin + net->cost;
+    return 10 * net->overflow + net->overflow_twopin + 3 * log2(net->cost);
 }
 
 int GlobalRouter::delta(const TwoPin* twopin) const {
