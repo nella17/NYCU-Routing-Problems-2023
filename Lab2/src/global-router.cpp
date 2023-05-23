@@ -589,6 +589,7 @@ void GlobalRouter::route(bool leave) {
         return s + net->twopin.size();
     });
     twopins.reserve(twopin_count);
+    id2net.reserve(2lu << int(log2((double)ispdData->nets.size())));
     for (auto net: ispdData->nets) {
         auto mynet = new Net(net);
         id2net[ net->id ] = mynet;
