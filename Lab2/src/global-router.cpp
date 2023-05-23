@@ -261,7 +261,7 @@ void GlobalRouter::ripup(TwoPin* twopin) {
     twopin->ripup = true;
     twopin->reroute++;
     auto netId = twopin->parNet->id;
-    auto net = id2net[netId];
+    auto net = id2net.find(netId)->second;
     for (auto rp: twopin->path)
         if (getEdge(rp).pop(twopin, min_width, min_spacing))
             net->wlen--;
@@ -271,7 +271,7 @@ void GlobalRouter::place(TwoPin* twopin) {
     assert(twopin->ripup);
     twopin->ripup = false;
     auto netId = twopin->parNet->id;
-    auto net = id2net[netId];
+    auto net = id2net.find(netId)->second;
     for (auto rp: twopin->path)
         if (getEdge(rp).push(twopin, min_width, min_spacing))
             net->wlen++;
