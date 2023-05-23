@@ -80,8 +80,8 @@ int main(int argc, char* const argv []) {
         }
         std::cerr << "[-] preroute LayerAssignment costs" _ Ld.count() _ "s" _ std::endl;
 
-        auto r1 = Ld * 10 + std::chrono::seconds(120);
-        auto r2 = Ld * 5 + std::chrono::seconds(10);
+        auto r1 = Ld * 5 + std::chrono::seconds(120);
+        auto r2 = Ld * 2 + std::chrono::seconds(30);
 
         if (gr.stop) return;
 
@@ -125,7 +125,7 @@ int main(int argc, char* const argv []) {
     delete graph;
     delete ispdData;
 
-    _exit(EXIT_SUCCESS);
+    exit(EXIT_SUCCESS);
 
     return 0;
 }
