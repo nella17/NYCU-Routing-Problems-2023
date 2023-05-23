@@ -226,6 +226,7 @@ struct TwoPin
     bool ripup;
     int reroute;
     Path path;
+    void* box;
 
     TwoPin(): TwoPin(Point(), Point()) {}
 
@@ -236,7 +237,8 @@ struct TwoPin
         overflow(0),
         ripup(false),
         reroute(0),
-        path{}
+        path{},
+        box(nullptr)
     {}
 
     int HPWL() const {

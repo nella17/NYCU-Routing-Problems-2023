@@ -469,8 +469,14 @@ void GlobalRouter::HMR_impl(ISPDParser::Net* net, Point f, Point t, BoxCost& box
 
 void GlobalRouter::HUM(TwoPin* twopin) {
     auto parNet = twopin->parNet;
-    auto [it,insert] = boxs.try_emplace(twopin, twopin->from, twopin->to);
-    auto& box = it->second;
+
+    bool insert = false;
+    if (twopin->box == nullptr) {
+        insert = true;
+        twopin->box = new Box(twopin->from, twopin->to);
+    }
+    auto& box = *(Box*)twopin->box;
+
     if (insert or true) {
         // Congestion-aware Bounding Box Expansion
     // } else if (0) {

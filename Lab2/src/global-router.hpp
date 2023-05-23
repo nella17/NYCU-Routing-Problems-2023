@@ -77,7 +77,6 @@ private:
     size_t width, height;
     int min_width, min_spacing, min_net, mx_cap;
     GridGraph<Edge> grid;
-    std::unordered_map<TwoPin*, Box> boxs;
     std::vector<Net*> nets;
     std::vector<TwoPin*> twopins;
     std::unordered_map<int, Net*> id2net;
