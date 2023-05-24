@@ -57,7 +57,7 @@ public:
 
     struct Net {
         int overflow, overflow_twopin, wlen, reroute;
-        long double score, cost;
+        double score, cost;
         ISPDParser::Net* net;
         std::vector<TwoPin*> twopins;
         Net(ISPDParser::Net*);
