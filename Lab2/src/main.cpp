@@ -65,8 +65,8 @@ int main(int argc, char* const argv []) {
     std::unique_lock<std::mutex> lk(cv_m);
 
     std::thread([&]() {
-        std::chrono::duration<double> Ld = time - start;
-        {
+        std::chrono::duration<double> Ld = std::chrono::seconds(5);
+        if (0) {
             auto TispdData = parse_input(inputFile);
             GlobalRouter Tgr(TispdData);
             Tgr.print = false;
