@@ -1,6 +1,6 @@
 #include "utils.hpp"
 
-std::mt19937 rng((unsigned)std::chrono::steady_clock::now().time_since_epoch().count());
+std::mt19937 rng(0);
 
 int sign(int x) {
     return x == 0 ? 0 : x > 0 ? 1 : -1;
