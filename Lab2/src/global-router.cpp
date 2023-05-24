@@ -35,8 +35,12 @@ RPoint make(Point f, Point t) {
 }
 
 GlobalRouter::Edge::Edge(int _cap): cap(_cap), demand(0), he(1), of(0), net{}, twopins{} {
-    net.max_load_factor(0.25);
-    twopins.max_load_factor(0.25);
+    size_t size = _cap > 256 ? 1024 : 256;
+    float factor = 0.25;
+    net.reserve(size);
+    net.max_load_factor(factor);
+    twopins.reserve(size);
+    twopins.max_load_factor(factor);
 }
 
 bool GlobalRouter::Edge::overflow() const {
