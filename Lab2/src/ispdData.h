@@ -120,6 +120,7 @@ static ispdData* parse(std::istream &is) {
     is >> keyword >> data->numXGrid >> data->numYGrid >> data->numLayer;
     is >> keyword >> keyword;
     data->verticalCapacity.clear();
+    data->verticalCapacity.reserve(data->numLayer);
     int val;
     for (int i = 0; i < data->numLayer; i++) {
         is >> val;
@@ -128,6 +129,7 @@ static ispdData* parse(std::istream &is) {
     is.ignore(INT_MAX, '\n');
     is >> keyword >> keyword;
     data->horizontalCapacity.clear();
+    data->horizontalCapacity.reserve(data->numLayer);
     for (int i = 0; i < data->numLayer; i++) {
         is >> val;
         data->horizontalCapacity.push_back(val);
@@ -135,6 +137,7 @@ static ispdData* parse(std::istream &is) {
     is.ignore(INT_MAX, '\n');
     is >> keyword >> keyword;
     data->minimumWidth.clear();
+    data->minimumWidth.reserve(data->numLayer);
     for (int i = 0; i < data->numLayer; i++) {
         is >> val;
         data->minimumWidth.push_back(val);
@@ -142,6 +145,7 @@ static ispdData* parse(std::istream &is) {
     is.ignore(INT_MAX, '\n');
     is >> keyword >> keyword;
     data->minimumSpacing.clear();
+    data->minimumSpacing.reserve(data->numLayer);
     for (int i = 0; i < data->numLayer; i++) {
         is >> val;
         data->minimumSpacing.push_back(val);
@@ -149,6 +153,7 @@ static ispdData* parse(std::istream &is) {
     is.ignore(INT_MAX, '\n');
     is >> keyword >> keyword;
     data->viaSpacing.clear();
+    data->viaSpacing.reserve(data->numLayer);
     for (int i = 0; i < data->numLayer; i++) {
         is >> val;
         data->viaSpacing.push_back(val);
@@ -157,11 +162,13 @@ static ispdData* parse(std::istream &is) {
     is >> data->lowerLeftX >> data->lowerLeftY >> data->tileWidth >> data->tileHeight;
     is >> keyword >> keyword >>data->numNet;
     data->nets.clear();
+    data->nets.reserve(data->numNet);
     for (int i = 0; i < data->numNet; i++) {
         std::string net_name;
         int id, num_pins, min_width;
         is >> net_name >> id >> num_pins >> min_width;
         Net *net = new Net{net_name, id, num_pins, min_width};
+        net->pins.reserve(num_pins);
         for (int j = 0; j < num_pins; j++) {
             int x, y, z;
             is >> x >> y >> z;
@@ -171,6 +178,7 @@ static ispdData* parse(std::istream &is) {
     }
     is >> data->numCapacityAdj;
     data->capacityAdjs.clear();
+    data->capacityAdjs.reserve(data->numCapacityAdj);
     for (int i = 0; i < data->numCapacityAdj; i++) {
         int x1, y1, z1, x2, y2, z2, reduced_capacity_level;
         is >> x1 >> y1 >> z1 >> x2 >> y2 >> z2 >> reduced_capacity_level;
