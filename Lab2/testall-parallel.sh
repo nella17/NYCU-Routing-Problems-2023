@@ -14,7 +14,7 @@ route() {
     case=$(basename "$in" | cut -d'.' -f1)
     rt=$(tail "$time" | grep real | awk '{ print $2 }')
     time perl ./eval2008.pl "$in" "$out" 2>&1 | tee -a "$time" | \
-      tail -n1 | tail "-c+$(echo "$in x" | wc -c)" | \
+      tail -n1 | tail "-c+40" | \
       awk "{ print \"$case\" \"\t\" \$1 \"\t\" \$2 \"\t\" \$3 \"\t\" \"$rt\" }" | tee -a "$result"
     rm "$out"
   else
