@@ -6,7 +6,7 @@ CXX ?= g++
 CXXFLAGS := -std=c++17 -I${SRCDIR} -MMD -MP -Wall -Wextra -Wshadow -Wconversion
 LDFLAGS  := -lpthread
 RC_FLAGS := -Ofast
-PF_FLAGS := -Ofast -pg
+PF_FLAGS := -Ofast -pg -g
 DC_FLAGS := -g -DDEBUG -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC -D_GLIBCXX_DEBUG_PEDANTIC_ASSERT
 
 ifeq ($(DEBUG), 1)
