@@ -94,7 +94,7 @@ private:
     inline double get_cost_pe(int) const;
     void build_cost_pe();
 
-    bool sort_twopins(bool);
+    void sort_twopins();
     inline double score(const TwoPin*) const;
     inline double score(const Net*) const;
     inline int delta(const TwoPin*) const;

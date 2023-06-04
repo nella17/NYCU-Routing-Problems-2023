@@ -189,27 +189,18 @@ void GlobalRouter::build_cost_pe() {
     }
 }
 
-bool GlobalRouter::sort_twopins(bool sel) {
-    if (!sel) {
-        std::sort(ALL(twopins), [&](auto a, auto b) {
+void GlobalRouter::sort_twopins() {
+    std::sort(ALL(nets), [&](auto a, auto b) {
+        auto sa = score(a);
+        auto sb = score(b);
+        return sa > sb;
+    });
+    for (auto net: nets)
+        std::sort(ALL(net->twopins), [&](auto a, auto b) {
             auto sa = score(a);
             auto sb = score(b);
-            return sa != sb ? sa > sb : a->HPWL() > b->HPWL();
+            return sa != sb ? sa < sb : a->HPWL() < b->HPWL();
         });
-    } else {
-        std::sort(ALL(nets), [&](auto a, auto b) {
-            auto sa = score(a);
-            auto sb = score(b);
-            return sa > sb;
-        });
-        for (auto net: nets)
-            std::sort(ALL(net->twopins), [&](auto a, auto b) {
-                auto sa = score(a);
-                auto sb = score(b);
-                return sa != sb ? sa < sb : a->HPWL() < b->HPWL();
-            });
-    }
-    return sel;
 }
 
 double GlobalRouter::score(const TwoPin* twopin) const {
@@ -735,27 +726,18 @@ void GlobalRouter::preroute() {
     k = 0;
     if (print) std::cerr << "[*]" _ "preroute" _ std::endl;
     auto start = std::chrono::steady_clock::now();
-    if (0) { // TODO
-        sort_twopins(0);
-        for (auto twopin: twopins) {
+    for (auto net: nets) {
+        net->wlen = 0;
+        for (auto twopin: net->twopins)
+            net->wlen += twopin->HPWL();
+    }
+    sort_twopins();
+    for (auto net: nets) {
+        net->wlen = 0;
+        for (auto twopin: net->twopins) {
             twopin->ripup = true;
             Lshape(twopin);
             place(twopin);
-        }
-    } else {
-        for (auto net: nets) {
-            net->wlen = 0;
-            for (auto twopin: net->twopins)
-                net->wlen += twopin->HPWL();
-        }
-        sort_twopins(1);
-        for (auto net: nets) {
-            net->wlen = 0;
-            for (auto twopin: net->twopins) {
-                twopin->ripup = true;
-                Lshape(twopin);
-                place(twopin);
-            }
         }
     }
     if (print) std::cerr _ "time" _ sec_since(start) << 's';
@@ -809,46 +791,30 @@ int GlobalRouter::check_overflow() {
 }
 
 void GlobalRouter::ripup_place(FP fp) {
-    if (0) { // TODO
-        sort_twopins(0);
-        for (auto twopin: twopins) {
+    sort_twopins();
+    for (auto net: nets) {
+        for (auto twopin: net->twopins) {
             if (stop) break;
             twopin->overflow = 0;
             for (auto rp: twopin->path)
                 if (getEdge(rp).overflow()) {
                     twopin->overflow = 1;
-                    ripup(twopin);
-                    (this->*fp)(twopin);
-                    place(twopin);
                     break;
                 }
         }
-    } else {
-        sort_twopins(1);
-        for (auto net: nets) {
-            for (auto twopin: net->twopins) {
-                if (stop) break;
-                twopin->overflow = 0;
-                for (auto rp: twopin->path)
-                    if (getEdge(rp).overflow()) {
-                        twopin->overflow = 1;
-                        break;
-                    }
-            }
-            for (auto twopin: net->twopins) {
-                if (stop) break;
-                if (twopin->overflow)
-                    ripup(twopin);
-            }
-            for (auto twopin: net->twopins) {
-                if (stop) break;
-                if (twopin->ripup) {
-                    (this->*fp)(twopin);
-                    place(twopin);
-                }
-            }
+        for (auto twopin: net->twopins) {
             if (stop) break;
+            if (twopin->overflow)
+                ripup(twopin);
         }
+        for (auto twopin: net->twopins) {
+            if (stop) break;
+            if (twopin->ripup) {
+                (this->*fp)(twopin);
+                place(twopin);
+            }
+        }
+        if (stop) break;
     }
     if (stop) throw false;
 }
