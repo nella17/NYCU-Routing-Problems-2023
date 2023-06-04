@@ -31,7 +31,7 @@ route() {
 
 make -j || exit
 echo -e "case\tTOF\tMOF\tWL\tRT" > "$result"
-for f in './ISPD 2008 Benchmarks'/*.gr; do
+for f in './ISPD-2008-Benchmarks'/*.gr; do
   echo "$f"
   route "$f"
 done
