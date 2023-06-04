@@ -62,9 +62,10 @@ int main(int argc, char* const argv []) {
     time = std::chrono::steady_clock::now();
     std::condition_variable cv;
     std::mutex cv_m;
-    std::unique_lock<std::mutex> lk(cv_m);
 
     std::thread([&]() {
+        std::unique_lock<std::mutex> lk(cv_m);
+
         std::chrono::duration<double> Ld = std::chrono::seconds(5);
         if (0) {
             auto TispdData = parse_input(inputFile);
