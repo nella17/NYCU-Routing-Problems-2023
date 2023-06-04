@@ -794,7 +794,7 @@ void GlobalRouter::ripup_place(FP fp) {
     sort_twopins();
     for (auto net: nets) {
         for (auto twopin: net->twopins) {
-            if (stop) break;
+            if (stop) goto stop;
             twopin->overflow = 0;
             for (auto rp: twopin->path)
                 if (getEdge(rp).overflow()) {
@@ -803,20 +803,22 @@ void GlobalRouter::ripup_place(FP fp) {
                 }
         }
         for (auto twopin: net->twopins) {
-            if (stop) break;
+            if (stop) goto stop;
             if (twopin->overflow)
                 ripup(twopin);
         }
         for (auto twopin: net->twopins) {
-            if (stop) break;
+            if (stop) goto stop;
             if (twopin->ripup) {
                 (this->*fp)(twopin);
                 place(twopin);
             }
         }
-        if (stop) break;
+        if (stop) goto stop;
     }
-    if (stop) throw false;
+    return;
+stop:
+    throw false;
 }
 
 void GlobalRouter::routing(const char* name, FP fp, int iteration) {
