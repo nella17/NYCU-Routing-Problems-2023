@@ -134,6 +134,9 @@ double GlobalRouter::cost(const Edge& e) const {
 
 void GlobalRouter::del_cost(Net* net) {
     for (auto twopin: net->twopins)
+        for (auto rp: twopin->path)
+            getEdge(rp).used++;
+    for (auto twopin: net->twopins)
         del_cost(twopin);
 }
 
@@ -143,6 +146,9 @@ void GlobalRouter::del_cost(TwoPin* twopin) {
 }
 
 void GlobalRouter::add_cost(Net* net) {
+    for (auto twopin: net->twopins)
+        for (auto rp: twopin->path)
+            getEdge(rp).used--;
     for (auto twopin: net->twopins)
         add_cost(twopin);
 }
@@ -756,9 +762,6 @@ void GlobalRouter::preroute() {
             place(twopin);
             del_cost(twopin);
         }
-        for (auto twopin: net->twopins)
-            for (auto rp: twopin->path)
-                getEdge(rp).used--;
         add_cost(net);
     }
     if (print) std::cerr _ "time" _ sec_since(start) << 's';
@@ -834,9 +837,6 @@ void GlobalRouter::ripup_place(FP fp) {
                 }
         }
 
-        for (auto twopin: net->twopins)
-            for (auto rp: twopin->path)
-                getEdge(rp).used++;
         del_cost(net);
 
         for (auto twopin: net->twopins) {
@@ -858,9 +858,6 @@ void GlobalRouter::ripup_place(FP fp) {
 
         if (stop) goto stop;
 
-        for (auto twopin: net->twopins)
-            for (auto rp: twopin->path)
-                getEdge(rp).used--;
         add_cost(net);
     }
     return;
