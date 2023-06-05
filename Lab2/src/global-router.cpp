@@ -784,34 +784,32 @@ int GlobalRouter::check_overflow() {
         }
     }
 
+    int ofnet = 0, oftp = 0, wl = 0;
+
     for (auto net: nets) {
         std::vector<Edge*> v{};
-        for (auto twopin: net->twopins)
+        for (auto twopin: net->twopins) {
             for (auto rp: twopin->path) {
-                v.emplace_back(&getEdge(rp));
-                if (getEdge(rp).overflow())
+                auto& e = getEdge(rp);
+                v.emplace_back(&e);
+                if (e.overflow())
                     twopin->overflow++;
             }
+            if (twopin->overflow) {
+                net->overflow_twopin++;
+                oftp++;
+            }
+        }
         sort(ALL(v));
         net->wlen = (int)std::distance(v.begin(), std::unique(ALL(v)));
+        wl += net->wlen;
         for (auto e: v) {
             net->cost += cost(*e);
             if (e->overflow())
                 net->overflow++;
         }
-    }
-
-    int ofnet = 0, oftp = 0, wl = 0;
-    for (auto net: nets) {
-        wl += net->wlen;
-        if (net->overflow) {
+        if (net->overflow)
             ofnet++;
-            for (auto twopin: net->twopins)
-                if (twopin->overflow) {
-                    net->overflow_twopin++;
-                    oftp++;
-                }
-        }
     }
 
     if (print) std::cerr 
