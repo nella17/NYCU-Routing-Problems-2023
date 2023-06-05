@@ -787,29 +787,30 @@ int GlobalRouter::check_overflow() {
     int ofnet = 0, oftp = 0, wl = 0;
 
     for (auto net: nets) {
-        std::vector<Edge*> v{};
         for (auto twopin: net->twopins) {
             for (auto rp: twopin->path) {
                 auto& e = getEdge(rp);
-                v.emplace_back(&e);
-                if (e.overflow())
+                bool zero = e.used++ == 0;
+                if (zero) net->wlen++;
+                if (e.overflow()) {
                     twopin->overflow++;
+                    if (zero) {
+                        net->cost += cost(e);
+                        net->overflow++;
+                    }
+                }
             }
             if (twopin->overflow) {
                 net->overflow_twopin++;
                 oftp++;
             }
         }
-        sort(ALL(v));
-        net->wlen = (int)std::distance(v.begin(), std::unique(ALL(v)));
         wl += net->wlen;
-        for (auto e: v) {
-            net->cost += cost(*e);
-            if (e->overflow())
-                net->overflow++;
-        }
         if (net->overflow)
             ofnet++;
+        for (auto twopin: net->twopins)
+            for (auto rp: twopin->path)
+                getEdge(rp).used--;
     }
 
     if (print) std::cerr 
