@@ -4,7 +4,8 @@ objDIR := ./obj
 
 CXX ?= g++
 CXXFLAGS := -std=c++17 -I${SRCDIR} -MMD -MP -Wall -Wextra -Wshadow -Wconversion \
-			-fno-stack-protector -fcf-protection=none
+			-fno-stack-protector -fcf-protection=none \
+			-fno-tree-loop-distribute-patterns -ffunction-sections
 LDFLAGS  := -lpthread
 RC_FLAGS := -Ofast
 PF_FLAGS ?= -Ofast -pg -g

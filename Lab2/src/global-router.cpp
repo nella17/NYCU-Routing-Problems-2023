@@ -1,5 +1,7 @@
 #include "global-router.hpp"
 
+#pragma GCC optimize("unroll-loops")
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>
