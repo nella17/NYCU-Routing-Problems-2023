@@ -1,7 +1,19 @@
 #!/bin/bash
 set -ex
-PERF=1 CXX=g++-12 PF_FLAGS='-Ofast -g -L/opt/homebrew/Cellar/gperftools/2.10/lib -lprofiler' \
+
+task='newblue5*'
+
+FREQ=1000
+
+# make clean
+PERF=1 PF_FLAGS='-Ofast -g' \
   make -j
-CPUPROFILE=./prof.out time ./router.perf 'ISPD 2008 Benchmarks/adaptec3.gr' /dev/null
-# pprof ./router.perf ./prof.out
-pprof --pdf ./router.perf ./prof.out > out.pdf
+
+rm perf.data || true
+time perf record -F $FREQ -g --call-graph dwarf -- \
+  ./router.perf ./ISPD-2008-Benchmarks/$task.gr /dev/null
+perf script > out.perf
+
+# https://github.com/brendangregg/FlameGraph.git
+./FlameGraph/stackcollapse-perf.pl out.perf > out.folded
+./FlameGraph/flamegraph.pl out.folded > out.svg
