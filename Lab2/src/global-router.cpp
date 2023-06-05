@@ -34,43 +34,30 @@ RPoint make(Point f, Point t) {
     __builtin_unreachable();
 }
 
-GlobalRouter::Edge::Edge(int _cap): cap(_cap), demand(0), he(1), of(0), net{}, twopins{} {
-    size_t size = _cap > 256 ? 1024 : 256;
-    float factor = 0.25;
-    net.reserve(size);
-    net.max_load_factor(factor);
-    twopins.reserve(size);
-    twopins.max_load_factor(factor);
-}
+GlobalRouter::Edge::Edge(int _cap):
+    cap(_cap), demand(0), he(1), of(0),
+    used(0), cost(1)
+{}
 
 bool GlobalRouter::Edge::overflow() const {
     return cap < demand;
 }
 
-bool GlobalRouter::Edge::push(TwoPin* twopin, int /*minw*/, int /*mins*/) {
-    assert(twopins.emplace(twopin).second);
+bool GlobalRouter::Edge::push(TwoPin* twopin) {
     // if (twopin->overflow) of++;
     if (twopin->overflow) he++;
 
-    auto [it, insert] = net.try_emplace(twopin->parNet->id, 1);
-    if (!insert) {
-        it->second++;
-        return false;
-    }
-    // demand += std::max(twopin->parNet->minimumWidth, minw) + mins;
-    demand++;
-    return true;
+    bool zero = used == 0;
+    if (zero) demand++;
+    used++;
+    return zero;
 }
 
-bool GlobalRouter::Edge::pop(TwoPin* twopin, int /*minw*/, int /*mins*/) {
-    assert(twopins.erase(twopin));
-    auto it = net.find(twopin->parNet->id);
-    assert(it != net.end());
-    if (--it->second) return false;
-    net.erase(it);
-    // demand -= std::max(twopin->parNet->minimumWidth, minw) + mins;
-    demand--;
-    return true;
+bool GlobalRouter::Edge::pop(TwoPin* twopin) {
+    bool zero = used == 1;
+    if (zero) demand--;
+    used--;
+    return zero;
 }
 
 GlobalRouter::Box::Box(Point f, Point t):
@@ -117,33 +104,60 @@ GlobalRouter::Net::Net(ISPDParser::Net* n):
 double GlobalRouter::cost(const TwoPin* twopin) const {
     double c = 0;
     for (auto rp: twopin->path)
-        c += cost(twopin->parNet, rp);
+        c += cost(rp);
     return c;
 }
 
-double GlobalRouter::cost(ISPDParser::Net* net, Point f, Point t) const {
+double GlobalRouter::cost(Point f, Point t) const {
     auto dx = std::abs(f.x - t.x);
     auto dy = std::abs(f.y - t.y);
     if (dx == 1 and dy == 0)
-        return cost(net, std::min(f.x, t.x), f.y, 1);
+        return cost(std::min(f.x, t.x), f.y, 1);
     if (dx == 0 and dy == 1)
-        return cost(net, f.x, std::min(f.y, t.y), 0);
+        return cost(f.x, std::min(f.y, t.y), 0);
     return INFINITY;
 }
 
-double GlobalRouter::cost(ISPDParser::Net* net, RPoint rp) const {
-    return cost(net, getEdge(rp));
+double GlobalRouter::cost(RPoint rp) const {
+    return cost(getEdge(rp));
 }
 
-double GlobalRouter::cost(ISPDParser::Net* net, int x, int y, bool hori) const {
-    return cost(net, getEdge(x, y, hori));
+double GlobalRouter::cost(int x, int y, bool hori) const {
+    return cost(getEdge(x, y, hori));
 }
 
-double GlobalRouter::cost(ISPDParser::Net* net, const Edge& e) const {
-    if (net and e.net.count(net->id)) return 1;
+double GlobalRouter::cost(const Edge& e) const {
+    return e.cost;
+}
+
+void GlobalRouter::del_cost(Net* net) {
+    for (auto twopin: net->twopins)
+        del_cost(twopin);
+}
+
+void GlobalRouter::del_cost(TwoPin* twopin) {
+    for (auto rp: twopin->path)
+        getEdge(rp).cost = 1;
+}
+
+void GlobalRouter::add_cost(Net* net) {
+    for (auto twopin: net->twopins)
+        add_cost(twopin);
+}
+
+void GlobalRouter::add_cost(TwoPin* twopin) {
+    for (auto rp: twopin->path) {
+        auto &e = getEdge(rp);
+        if (e.used == 0)
+            e.cost = calc_cost(e);
+    }
+}
+
+double GlobalRouter::calc_cost(const Edge& e) const {
+    // const Edge& e = getEdge(x, y, hori);
 
     // return std::exp(std::max(1, e.demand - e.cap + 1) * 2);
-    auto demand = e.demand + (net ? 1 : 0);
+    auto demand = e.demand + 1;
     auto cap = e.cap;
     auto of = demand - cap;
 
@@ -171,7 +185,7 @@ double GlobalRouter::get_cost_pe(int of) const {
     return cost_pe[i];
 }
 
-void GlobalRouter::build_cost_pe() {
+void GlobalRouter::build_cost() {
     constexpr double z = 200;
     for (int i = 0; i < COSTSZ; i++) {
         auto of = i - COSTOFF;
@@ -186,7 +200,10 @@ void GlobalRouter::build_cost_pe() {
             cost_pe[i] = 1 + z / (1 + std::exp(-0.7 * of));
             break;
         }
+        // std::cerr << cost_pe[i] << " \n"[i+1==COSTSZ];
     }
+    for (auto& edge: grid)
+        edge.cost = calc_cost(edge);
 }
 
 void GlobalRouter::sort_twopins() {
@@ -255,21 +272,23 @@ void GlobalRouter::ripup(TwoPin* twopin) {
     assert(!twopin->ripup);
     twopin->ripup = true;
     twopin->reroute++;
-    auto netId = twopin->parNet->id;
-    auto net = id2net.find(netId)->second;
+    // auto netId = twopin->parNet->id;
+    // auto net = id2net.find(netId)->second;
     for (auto rp: twopin->path)
-        if (getEdge(rp).pop(twopin, min_width, min_spacing))
-            net->wlen--;
+        if (getEdge(rp).pop(twopin)) {
+            // net->wlen--;
+        }
 }
 
 void GlobalRouter::place(TwoPin* twopin) {
     assert(twopin->ripup);
     twopin->ripup = false;
-    auto netId = twopin->parNet->id;
-    auto net = id2net.find(netId)->second;
+    // auto netId = twopin->parNet->id;
+    // auto net = id2net.find(netId)->second;
     for (auto rp: twopin->path)
-        if (getEdge(rp).push(twopin, min_width, min_spacing))
-            net->wlen++;
+        if (getEdge(rp).push(twopin)) {
+            // net->wlen++;
+        }
 }
 
 void GlobalRouter::Lshape(TwoPin* twopin) {
@@ -289,7 +308,6 @@ void GlobalRouter::Lshape(TwoPin* twopin) {
         if (p1.y == p2.y) return Lx(p1.y, p1.x, p2.x, func);
     };
 
-    auto parNet = twopin->parNet;
     auto& path = twopin->path;
     auto f = twopin->from, t = twopin->to;
     if (f.y > t.y) std::swap(f, t);
@@ -298,7 +316,7 @@ void GlobalRouter::Lshape(TwoPin* twopin) {
     auto Lcost = [&](Point m) {
         double c = 0;
         auto func = [&](int x, int y, bool hori) {
-            c += cost(parNet, x, y, hori);
+            c += cost(x, y, hori);
         };
         L(f, m, func);
         L(m, t, func);
@@ -318,7 +336,6 @@ void GlobalRouter::Lshape(TwoPin* twopin) {
 }
 
 void GlobalRouter::Zshape(TwoPin* twopin) {
-    auto parNet = twopin->parNet;
     auto& path = twopin->path;
     auto f = twopin->from, t = twopin->to;
     if (f.y > t.y) std::swap(f, t);
@@ -333,15 +350,15 @@ void GlobalRouter::Zshape(TwoPin* twopin) {
 
     auto dx = sign(t.x - f.x), dy = sign(t.y - f.y);
 
-    calcX(parNet, boxH, f.y, f.x, t.x);
+    calcX(boxH, f.y, f.x, t.x);
     for (auto px = f.x, x = px+dx; x != t.x+dx; px = x, x += dx)
-        calcY(parNet, boxH, x, f.y, t.y);
-    calcX(parNet, boxH, t.y, f.x, t.x);
+        calcY(boxH, x, f.y, t.y);
+    calcX(boxH, t.y, f.x, t.x);
 
-    calcY(parNet, boxV, f.x, f.y, t.y);
+    calcY(boxV, f.x, f.y, t.y);
     for (auto py = f.y, y = py+dy; y != t.y+dy; py = y, y += dy)
-        calcX(parNet, boxV, y, f.x, t.x);
-    calcY(parNet, boxV, t.x, f.y, t.y);
+        calcX(boxV, y, f.x, t.x);
+    calcY(boxV, t.x, f.y, t.y);
 
     auto& box = boxV(t).cost < boxH(t).cost ? boxV : boxH;
 
@@ -349,12 +366,12 @@ void GlobalRouter::Zshape(TwoPin* twopin) {
     box.trace(path, t);
 }
 
-void GlobalRouter::calcX(ISPDParser::Net* net, BoxCost& box, int y, int bx, int ex) {
+void GlobalRouter::calcX(BoxCost& box, int y, int bx, int ex) {
     auto dx = sign(ex - bx);
     if (dx == 0) return;
     auto pc = box(bx, y).cost;
     for (auto px = bx, x = px+dx; x != ex+dx; px = x, x += dx) {
-        auto cc = pc + cost(net, std::min(x, px), y, 1);
+        auto cc = pc + cost(std::min(x, px), y, 1);
         auto& data = box(x, y);
         if (data.cost <= cc) {
             pc = data.cost;
@@ -368,12 +385,12 @@ void GlobalRouter::calcX(ISPDParser::Net* net, BoxCost& box, int y, int bx, int 
     }
 }
 
-void GlobalRouter::calcY(ISPDParser::Net* net, BoxCost& box, int x, int by, int ey) {
+void GlobalRouter::calcY(BoxCost& box, int x, int by, int ey) {
     auto dy = sign(ey - by);
     if (dy == 0) return;
     auto pc = box(x, by).cost;
     for (auto py = by, y = py+dy; y != ey+dy; py = y, y += dy) {
-        auto cc = pc + cost(net, x, std::min(y, py), 0);
+        auto cc = pc + cost(x, std::min(y, py), 0);
         auto& data = box(x, y);
         if (data.cost <= cc) {
             pc = data.cost;
@@ -388,7 +405,6 @@ void GlobalRouter::calcY(ISPDParser::Net* net, BoxCost& box, int x, int by, int 
 }
 
 void GlobalRouter::monotonic(TwoPin* twopin) {
-    auto parNet = twopin->parNet;
     auto& path = twopin->path;
     auto f = twopin->from, t = twopin->to;
     if (f.y > t.y) std::swap(f, t);
@@ -399,13 +415,13 @@ void GlobalRouter::monotonic(TwoPin* twopin) {
         .cost = 0,
         .from = std::nullopt,
     };
-    calcX(parNet, box, f.y, f.x, t.x);
-    calcY(parNet, box, f.x, f.y, t.y);
+    calcX(box, f.y, f.x, t.x);
+    calcY(box, f.x, f.y, t.y);
     auto dy = sign(t.y - f.y);
     for (auto py = f.y, y = py+dy; y != t.y+dy; py = y, y += dy) {
         for (auto px = f.x, x = px+1; x <= t.x; px = x, x++) {
-            auto cx = box(x, py).cost + cost(parNet, x, std::min(y, py), 0);
-            auto cy = box(px, y).cost + cost(parNet, px, y, 1);
+            auto cx = box(x, py).cost + cost(x, std::min(y, py), 0);
+            auto cy = box(px, y).cost + cost(px, y, 1);
             auto sx = cx != cy ? cx < cy : randint(2);
             if (sx)
                 box(x, y) = {
@@ -424,47 +440,45 @@ void GlobalRouter::monotonic(TwoPin* twopin) {
     box.trace(path, t);
 }
 
-void GlobalRouter::VMR_impl(ISPDParser::Net* net, Point f, Point t, BoxCost& box) {
+void GlobalRouter::VMR_impl(Point f, Point t, BoxCost& box) {
     box(f) = {
         .cost = 0,
         .from = std::nullopt,
     };
-    calcX(net, box, f.y, box.L, box.R);
-    calcX(net, box, f.y, box.R, box.L);
+    calcX(box, f.y, box.L, box.R);
+    calcX(box, f.y, box.R, box.L);
     auto dy = sign(t.y - f.y);
     for (auto py = f.y, y = py+dy; y != t.y+dy; py = y, y += dy) {
         for (auto x = box.L; x <= box.R; x++)
             box(x, y) = {
-                .cost = box(x, py).cost + cost(net, x, std::min(y, py), 0),
+                .cost = box(x, py).cost + cost(x, std::min(y, py), 0),
                 .from = Point(x, py),
             };
-        calcX(net, box, y, box.L, box.R);
-        calcX(net, box, y, box.R, box.L);
+        calcX(box, y, box.L, box.R);
+        calcX(box, y, box.R, box.L);
     }
 }
 
-void GlobalRouter::HMR_impl(ISPDParser::Net* net, Point f, Point t, BoxCost& box) {
+void GlobalRouter::HMR_impl(Point f, Point t, BoxCost& box) {
     box(f) = {
         .cost = 0,
         .from = std::nullopt,
     };
-    calcY(net, box, f.x, box.B, box.U);
-    calcY(net, box, f.x, box.U, box.B);
+    calcY(box, f.x, box.B, box.U);
+    calcY(box, f.x, box.U, box.B);
     auto dx = sign(t.x - f.x);
     for (auto px = f.x, x = px+dx; x != t.x+dx; px = x, x += dx) {
         for (auto y = box.B; y <= box.U; y++)
             box(x, y) = {
-                .cost = box(px, y).cost + cost(net, std::min(x, px), y, 1),
+                .cost = box(px, y).cost + cost(std::min(x, px), y, 1),
                 .from = Point(px, y),
             };
-        calcY(net, box, x, box.B, box.U);
-        calcY(net, box, x, box.U, box.B);
+        calcY(box, x, box.B, box.U);
+        calcY(box, x, box.U, box.B);
     }
 }
 
 void GlobalRouter::HUM(TwoPin* twopin) {
-    auto parNet = twopin->parNet;
-
     bool insert = false;
     if (twopin->box == nullptr) {
         insert = true;
@@ -502,16 +516,16 @@ void GlobalRouter::HUM(TwoPin* twopin) {
 
     BoxCost CostVF(box), CostHF(box), CostVT(box), CostHT(box);
     if (std::abs(f.x - t.x) == box.R - box.L) {
-        VMR_impl(parNet, f, box.BL(), CostVF); VMR_impl(parNet, f, box.UR(), CostVF);
-        VMR_impl(parNet, t, box.BL(), CostVT); VMR_impl(parNet, t, box.UR(), CostVT);
+        VMR_impl(f, box.BL(), CostVF); VMR_impl(f, box.UR(), CostVF);
+        VMR_impl(t, box.BL(), CostVT); VMR_impl(t, box.UR(), CostVT);
     } else if (std::abs(f.y - t.y) == box.U - box.B) {
-        HMR_impl(parNet, f, box.BL(), CostHF); HMR_impl(parNet, f, box.UR(), CostHF);
-        HMR_impl(parNet, t, box.BL(), CostHT); HMR_impl(parNet, t, box.UR(), CostHT);
+        HMR_impl(f, box.BL(), CostHF); HMR_impl(f, box.UR(), CostHF);
+        HMR_impl(t, box.BL(), CostHT); HMR_impl(t, box.UR(), CostHT);
     } else {
-        VMR_impl(parNet, f, box.BL(), CostVF); VMR_impl(parNet, f, box.UR(), CostVF);
-        HMR_impl(parNet, f, box.BL(), CostHF); HMR_impl(parNet, f, box.UR(), CostHF);
-        VMR_impl(parNet, t, box.BL(), CostVT); VMR_impl(parNet, t, box.UR(), CostVT);
-        HMR_impl(parNet, t, box.BL(), CostHT); HMR_impl(parNet, t, box.UR(), CostHT);
+        VMR_impl(f, box.BL(), CostVF); VMR_impl(f, box.UR(), CostVF);
+        HMR_impl(f, box.BL(), CostHF); HMR_impl(f, box.UR(), CostHF);
+        VMR_impl(t, box.BL(), CostVT); VMR_impl(t, box.UR(), CostVT);
+        HMR_impl(t, box.BL(), CostHT); HMR_impl(t, box.UR(), CostHT);
     }
 #ifdef DEBUG
     //*
@@ -522,7 +536,7 @@ void GlobalRouter::HUM(TwoPin* twopin) {
         _ "CostVT\n" << CostVT
         _ "CostHT\n" << CostHT
         ; //*/
-    print_edges(parNet, box.L, box.R, box.B, box.U);
+    print_edges(box.L, box.R, box.B, box.U);
 #endif
     auto cF = [&](int x, int y) {
         return std::min(CostVF(x,y).cost, CostHF(x,y).cost);
@@ -584,10 +598,10 @@ void GlobalRouter::route(bool leave) {
         return s + net->twopin.size();
     });
     twopins.reserve(twopin_count);
-    id2net.reserve(2lu << int(log2((double)ispdData->nets.size())));
+    // id2net.reserve(2lu << int(log2((double)ispdData->nets.size())));
     for (auto net: ispdData->nets) {
         auto mynet = new Net(net);
-        id2net[ net->id ] = mynet;
+        // id2net[ net->id ] = mynet;
         mynet->twopins.reserve(net->twopin.size());
         nets.emplace_back(mynet);
         for (auto& twopin: net->twopin) {
@@ -598,6 +612,9 @@ void GlobalRouter::route(bool leave) {
 
     selcost = 0;
     preroute();
+    // TODO
+    // print_edges();
+    // getchar();
     if (leave) return;
     selcost = 0;
     routing("Lshape", &GlobalRouter::Lshape, 1);
@@ -696,7 +713,7 @@ void GlobalRouter::net_decomposition() {
     }
 }
 
-void GlobalRouter::print_edges(ISPDParser::Net* net, int L, int R, int B, int U) {
+void GlobalRouter::print_edges(int L, int R, int B, int U) {
     if (L == -1) L = 0;
     if (R == -1) R = (int)width-1;
     if (B == -1) B = 0;
@@ -707,7 +724,7 @@ void GlobalRouter::print_edges(ISPDParser::Net* net, int L, int R, int B, int U)
         for (int i = L; i+1 <= R; i++) {
             auto& e = getEdge(i, j, 1);
             std::cerr _ '(' << i << ',' << j << ')'
-                << e.demand <<'/'<< e.cap << '(' << cost(net, e) << ')';
+                << e.demand <<'/'<< e.cap << '(' << calc_cost(e) << ')';
         }
         std::cerr _ std::endl;
     }
@@ -716,7 +733,7 @@ void GlobalRouter::print_edges(ISPDParser::Net* net, int L, int R, int B, int U)
         for (int i = L; i <= R; i++) {
             auto& e = getEdge(i, j, 0);
             std::cerr _ '(' << i << ',' << j << ')'
-                << e.demand <<'/'<< e.cap << '(' << cost(net, e) << ')';
+                << e.demand <<'/'<< e.cap << '(' << calc_cost(e) << ')';
         }
         std::cerr _ std::endl;
     }
@@ -732,13 +749,19 @@ void GlobalRouter::preroute() {
             net->wlen += twopin->HPWL();
     }
     sort_twopins();
+    build_cost();
     for (auto net: nets) {
         net->wlen = 0;
         for (auto twopin: net->twopins) {
             twopin->ripup = true;
             Lshape(twopin);
             place(twopin);
+            del_cost(twopin);
         }
+        for (auto twopin: net->twopins)
+            for (auto rp: twopin->path)
+                getEdge(rp).used--;
+        add_cost(net);
     }
     if (print) std::cerr _ "time" _ sec_since(start) << 's';
     check_overflow();
@@ -750,6 +773,7 @@ int GlobalRouter::check_overflow() {
     for (auto twopin: twopins)
         twopin->overflow = 0;
     int mxof = 0, totof = 0;
+
     for (auto& edge: grid) {
         // edge.he += edge.of;
         // edge.of = 0;
@@ -757,13 +781,23 @@ int GlobalRouter::check_overflow() {
             auto of = edge.demand - edge.cap;
             totof += of;
             if (of > mxof) mxof = of;
-            for (auto [id, cnt]: edge.net) {
-                auto net = id2net.find(id)->second;
-                net->overflow++;
-                net->cost += cost(nullptr, edge);
+        }
+    }
+
+    for (auto net: nets) {
+        std::vector<Edge*> v{};
+        for (auto twopin: net->twopins)
+            for (auto rp: twopin->path) {
+                v.emplace_back(&getEdge(rp));
+                if (getEdge(rp).overflow())
+                    twopin->overflow++;
             }
-            for (auto twopin: edge.twopins)
-                twopin->overflow++;
+        sort(ALL(v));
+        net->wlen = (int)std::distance(v.begin(), std::unique(ALL(v)));
+        for (auto e: v) {
+            net->cost += cost(*e);
+            if (e->overflow())
+                net->overflow++;
         }
     }
 
@@ -802,19 +836,35 @@ void GlobalRouter::ripup_place(FP fp) {
                     break;
                 }
         }
+
+        for (auto twopin: net->twopins)
+            for (auto rp: twopin->path)
+                getEdge(rp).used++;
+        del_cost(net);
+
         for (auto twopin: net->twopins) {
             if (stop) goto stop;
-            if (twopin->overflow)
+            if (twopin->overflow) {
                 ripup(twopin);
+                add_cost(twopin);
+            }
         }
+
         for (auto twopin: net->twopins) {
             if (stop) goto stop;
             if (twopin->ripup) {
                 (this->*fp)(twopin);
                 place(twopin);
+                del_cost(twopin);
             }
         }
+
         if (stop) goto stop;
+
+        for (auto twopin: net->twopins)
+            for (auto rp: twopin->path)
+                getEdge(rp).used--;
+        add_cost(net);
     }
     return;
 stop:
@@ -824,7 +874,7 @@ stop:
 void GlobalRouter::routing(const char* name, FP fp, int iteration) {
     if (print) std::cerr << "[*]" _ name _ "routing" << std::endl;
     auto start = std::chrono::steady_clock::now();
-    build_cost_pe();
+    build_cost();
     for (int i = 1; i <= iteration; i++, k++) {
         ripup_place(fp);
         if (print) std::cerr _ i _ " time" _ sec_since(start) << 's';

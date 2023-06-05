@@ -26,12 +26,11 @@ public:
 
     struct Edge {
         int cap, demand, he, of;
-        std::unordered_map<int, size_t> net;
-        std::unordered_set<TwoPin*> twopins;
+        int used; double cost;
         Edge(int);
         inline bool overflow() const;
-        inline bool push(TwoPin*, int, int);
-        inline bool pop (TwoPin*, int, int);
+        inline bool push(TwoPin*);
+        inline bool pop (TwoPin*);
     };
 
     struct Box {
@@ -79,20 +78,27 @@ private:
     GridGraph<Edge> grid;
     std::vector<Net*> nets;
     std::vector<TwoPin*> twopins;
-    std::unordered_map<int, Net*> id2net;
+    // TODO
+    // std::unordered_map<int, Net*> id2net;
 
     int selcost;
     inline double cost(const TwoPin*) const;
-    inline double cost(ISPDParser::Net*, Point, Point) const;
-    inline double cost(ISPDParser::Net*, RPoint) const;
-    inline double cost(ISPDParser::Net*, int, int, bool) const;
-    inline double cost(ISPDParser::Net*, const Edge&) const;
+    inline double cost(Point, Point) const;
+    inline double cost(RPoint) const;
+    inline double cost(int, int, bool) const;
+    inline double cost(const Edge&) const;
+
+    void del_cost(Net*);
+    void del_cost(TwoPin*);
+    void add_cost(Net*);
+    void add_cost(TwoPin*);
+    double calc_cost(const Edge&) const;
 
     static constexpr int COSTSZ  = 1024;
     static constexpr int COSTOFF = 256;
     double cost_pe[COSTSZ];
     inline double get_cost_pe(int) const;
-    void build_cost_pe();
+    void build_cost();
 
     void sort_twopins();
     inline double score(const TwoPin*) const;
@@ -110,13 +116,13 @@ private:
     void Lshape(TwoPin*);
     void Zshape(TwoPin*);
 
-    inline void calcX(ISPDParser::Net*, BoxCost&, int, int, int);
-    inline void calcY(ISPDParser::Net*, BoxCost&, int, int, int);
+    inline void calcX(BoxCost&, int, int, int);
+    inline void calcY(BoxCost&, int, int, int);
 
     void monotonic(TwoPin*);
 
-    void VMR_impl(ISPDParser::Net*, Point, Point, BoxCost&);
-    void HMR_impl(ISPDParser::Net*, Point, Point, BoxCost&);
+    void VMR_impl(Point, Point, BoxCost&);
+    void HMR_impl(Point, Point, BoxCost&);
     void HUM(TwoPin*);
 
     void construct_2D_grid_graph();
@@ -127,5 +133,5 @@ private:
     void ripup_place(FP);
     void routing(const char*, FP, int = 1);
 
-    void print_edges(ISPDParser::Net* = nullptr, int = -1, int = -1, int = -1, int = -1);
+    void print_edges(int = -1, int = -1, int = -1, int = -1);
 };
