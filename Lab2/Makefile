@@ -3,7 +3,8 @@ SRCDIR := ./src
 objDIR := ./obj
 
 CXX ?= g++
-CXXFLAGS := -std=c++17 -I${SRCDIR} -MMD -MP -Wall -Wextra -Wshadow -Wconversion
+CXXFLAGS := -std=c++17 -I${SRCDIR} -MMD -MP -Wall -Wextra -Wshadow -Wconversion \
+			-fno-stack-protector -fcf-protection=none
 LDFLAGS  := -lpthread
 RC_FLAGS := -Ofast
 PF_FLAGS ?= -Ofast -pg -g
