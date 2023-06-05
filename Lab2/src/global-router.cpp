@@ -53,7 +53,7 @@ bool GlobalRouter::Edge::push(TwoPin* twopin) {
     return zero;
 }
 
-bool GlobalRouter::Edge::pop(TwoPin* twopin) {
+bool GlobalRouter::Edge::pop(TwoPin* /* twopin */) {
     bool zero = used == 1;
     if (zero) demand--;
     used--;
@@ -488,7 +488,6 @@ void GlobalRouter::HUM(TwoPin* twopin) {
 
     if (insert or true) {
         // Congestion-aware Bounding Box Expansion
-    // } else if (0) {
         std::array<int,2> CntOE{ 0, 0 };
         for (auto rp: twopin->path)
             if (getEdge(rp).overflow())
@@ -612,9 +611,6 @@ void GlobalRouter::route(bool leave) {
 
     selcost = 0;
     preroute();
-    // TODO
-    // print_edges();
-    // getchar();
     if (leave) return;
     selcost = 0;
     routing("Lshape", &GlobalRouter::Lshape, 1);
