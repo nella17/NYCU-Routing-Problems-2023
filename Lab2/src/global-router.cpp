@@ -46,8 +46,7 @@ bool GlobalRouter::Edge::overflow() const {
 }
 
 bool GlobalRouter::Edge::push(TwoPin* twopin) {
-    // if (twopin->overflow) of++;
-    if (twopin->overflow) he++;
+    if (twopin->overflow) of++;
 
     bool zero = used == 0;
     if (zero) demand++;
@@ -769,15 +768,11 @@ void GlobalRouter::preroute() {
 }
 
 int GlobalRouter::check_overflow() {
-    for (auto net: nets)
-        net->cost = net->overflow = net->overflow_twopin = 0;
-    for (auto twopin: twopins)
-        twopin->overflow = 0;
     int mxof = 0, totof = 0;
 
     for (auto& edge: grid) {
-        // edge.he += edge.of;
-        // edge.of = 0;
+        edge.he += edge.of;
+        edge.of = 0;
         if (edge.overflow()) {
             auto of = edge.demand - edge.cap;
             totof += of;
@@ -788,7 +783,9 @@ int GlobalRouter::check_overflow() {
     int ofnet = 0, oftp = 0, wl = 0;
 
     for (auto net: nets) {
+        net->cost = net->wlen = net->overflow = net->overflow_twopin = 0;
         for (auto twopin: net->twopins) {
+            twopin->overflow = 0;
             for (auto rp: twopin->path) {
                 auto& e = getEdge(rp);
                 bool zero = e.used++ == 0;
