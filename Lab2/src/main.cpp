@@ -67,7 +67,7 @@ int main(int argc, char* const argv []) {
         std::unique_lock<std::mutex> lk(cv_m);
 
         std::chrono::duration<double> Ld = std::chrono::seconds(5);
-        if (0) {
+        if (1) {
             auto TispdData = parse_input(inputFile);
             GlobalRouter Tgr(TispdData);
             Tgr.print = false;
@@ -81,8 +81,8 @@ int main(int argc, char* const argv []) {
         }
         std::cerr << "[-] preroute LayerAssignment costs" _ Ld.count() _ "s" _ std::endl;
 
-        auto r1 = Ld * 5 + std::chrono::seconds(120);
-        auto r2 = Ld * 2 + std::chrono::seconds(30);
+        auto r1 = Ld * 10 + std::chrono::seconds(300);
+        auto r2 = Ld *  2 + std::chrono::seconds(100);
 
         if (gr.stop) return;
 

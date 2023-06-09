@@ -825,7 +825,6 @@ void GlobalRouter::ripup_place(FP fp) {
     sort_twopins();
     for (auto net: nets) {
         for (auto twopin: net->twopins) {
-            if (stop) goto stop;
             twopin->overflow = 0;
             for (auto rp: twopin->path)
                 if (getEdge(rp).overflow()) {
@@ -837,7 +836,6 @@ void GlobalRouter::ripup_place(FP fp) {
         del_cost(net);
 
         for (auto twopin: net->twopins) {
-            if (stop) goto stop;
             if (twopin->overflow) {
                 ripup(twopin);
                 add_cost(twopin);
@@ -845,7 +843,6 @@ void GlobalRouter::ripup_place(FP fp) {
         }
 
         for (auto twopin: net->twopins) {
-            if (stop) goto stop;
             if (twopin->ripup) {
                 (this->*fp)(twopin);
                 place(twopin);
@@ -853,13 +850,10 @@ void GlobalRouter::ripup_place(FP fp) {
             }
         }
 
-        if (stop) goto stop;
-
         add_cost(net);
     }
+    if (stop) throw false;
     return;
-stop:
-    throw false;
 }
 
 void GlobalRouter::routing(const char* name, FP fp, int iteration) {
@@ -870,6 +864,7 @@ void GlobalRouter::routing(const char* name, FP fp, int iteration) {
         ripup_place(fp);
         if (print) std::cerr _ i _ " time" _ sec_since(start) << 's';
         if (check_overflow() == 0) throw true;
+        if (stop) throw false;
     }
     if (print) std::cerr _ name _ "routing costs" _ sec_since(start) << "s" << std::endl;
 }
