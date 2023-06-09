@@ -49,7 +49,7 @@ int main(int argc, char **argv){
 
     //Part 6: Post-process you can refind the path or do something else
     //Or, you can just ignore this part
-    //router.postProcess();
+    router.postProcess();
 
     //Part 7: Print the result
     std::ofstream outFile(argv[2]);
