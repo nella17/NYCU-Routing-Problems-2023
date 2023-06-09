@@ -171,7 +171,7 @@ double GlobalRouter::calc_cost(const Edge& e) const {
     auto pe = get_cost_pe(of);
 
     if (selcost == 2) {
-        auto dah = pow(e.he, 1.8) / 50;
+        auto dah = pow(e.he, 3.6) / 100;
         auto be = 200;
         auto c = (1 + dah) * pe + be;
         return c;
