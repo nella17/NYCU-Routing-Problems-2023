@@ -335,7 +335,7 @@ void Router::printRoutingResult(std::ofstream& outputFile) {
     for (auto it = corY.begin(); it != corY.end(); )
         outputFile << *it << " \n"[++it == corY.end()];
     for (auto& net: nets) {
-        outputFile << net.name << '\n';
+        outputFile << net.name _ net.path.size() << '\n';
         for (auto& p: net.path)
             outputFile << p << '\n';
     }
