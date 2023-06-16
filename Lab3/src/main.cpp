@@ -8,7 +8,7 @@
 #include <cassert>
 
 int main(int argc, char **argv){
-    assert(argc >= 2 && "Usage: ./Lab3 <inputFile> <ouptFile>");
+    assert(argc >= 2 && "Usage: ./Lab3 <inputFile> <ouputFile>");
     Router router;
 
     //Part 1: Parse the input file
@@ -33,7 +33,7 @@ int main(int argc, char **argv){
         //Part 4: Run the solver 
         std::string command = router.getSysCommand(i);
         //Please use the following solvers
-        if(command.find("./open-wbo") != 0 || command.find("glsol") != 0){
+        if(command.find("./open-wbo") != 0 && command.find("glsol") != 0){
             std::cerr << "Error: solver not supported" << std::endl;
             return 1;
         }
