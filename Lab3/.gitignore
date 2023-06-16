@@ -2,3 +2,6 @@ obj
 Lab3*
 open-wbo
 verifier
+sat_result.txt
+path.png
+clause.sat
