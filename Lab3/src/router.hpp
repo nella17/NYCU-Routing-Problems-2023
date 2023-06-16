@@ -1,17 +1,11 @@
+#pragma once
+
 #include <iostream>
 #include <fstream>
-#include <algorithm>
-#include <utility>
 #include <string>
-#include <cassert>
 #include <vector>
-#include <set>
-#include <map>
-#include <queue>
 #include <string>
 
-#ifndef ROUTER_HPP
-#define ROUTER_HPP 1
 class Router {
 private:
     // You can set your data structure here, like:
@@ -31,7 +25,7 @@ private:
     std::vector<std::vector<int>> dfs(int, std::vector<int>);
     */
 public:
-    Router() = default;
+    Router();
     void readCircuitSpec(std::ifstream& inputFile);
     void generateGraph();
     std::string getSysCommand(int);
@@ -40,4 +34,3 @@ public:
     void postProcess();
     void printRoutingResult(std::ofstream& outputFile);
 };
-#endif
