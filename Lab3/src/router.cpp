@@ -14,6 +14,11 @@ Router::Point::Point(int _x, int _y, int _z): x(_x), y(_y), z(_z) {}
 Router::Clause::Clause(): weight(0), vars{} {}
 Router::Clause::Clause(std::vector<int> v): weight(0), vars(v) {}
 
+int& Router::Clause::emplace_back(int x) {
+    assert(x != 0);
+    return vars.emplace_back(x);
+}
+
 Router::Router() {}
 
 void Router::readCircuitSpec(std::ifstream& inputFile) {
@@ -143,9 +148,9 @@ void Router::generateClauses(std::ofstream& outputFile) {
 
     varsE.clear();
     varsE.reserve((size_t)(variables - xedge0));
-    for (auto e: varsX) varsE.emplace_back(e);
-    for (auto e: varsY) varsE.emplace_back(e);
-    for (auto e: varsZ) varsE.emplace_back(e);
+    for (auto e: varsX) if (e) varsE.emplace_back(e);
+    for (auto e: varsY) if (e) varsE.emplace_back(e);
+    for (auto e: varsZ) if (e) varsE.emplace_back(e);
 
     // X -> Y = X' or Y
     // (X and Y)' = X' or Y'
@@ -162,7 +167,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
                     Clause c;
                     for (auto i: ids) {
                         auto k = nei[i] + nid;
-                        c.vars.emplace_back(-k);
+                        c.emplace_back(-k);
                     }
                     clauses.emplace_back(c);
                 }
@@ -174,9 +179,9 @@ void Router::generateClauses(std::ofstream& outputFile) {
                     for (size_t j = 0; j < size; j++) {
                         auto k = nei[j] + nid;
                         if (i == j)
-                            c.vars.emplace_back(-k);
+                            c.emplace_back(-k);
                         else
-                            c.vars.emplace_back(k);
+                            c.emplace_back(k);
                     }
                     clauses.emplace_back(c);
                 }
@@ -189,7 +194,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
             for (auto&& ids: comb_id(size, 2)) {
                 Clause c;
                 for (auto i: ids)
-                    c.vars.emplace_back(-nei[i]);
+                    c.emplace_back(-nei[i]);
                 clauses.emplace_back(c);
             }
             // set node used by netid
@@ -199,7 +204,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
                     Clause c;
                     auto id = start + b;
                     auto r = (netid & (1 << b)) ? 1 : -1;
-                    c.vars.emplace_back(id * r);
+                    c.emplace_back(id * r);
                     clauses.emplace_back(c);
                 }
             }
@@ -211,7 +216,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
             Clause c;
             for (auto i: ids) {
                 auto k = e + (int)i;
-                c.vars.emplace_back(-k);
+                c.emplace_back(-k);
             }
             clauses.emplace_back(c);
         }
@@ -222,28 +227,28 @@ void Router::generateClauses(std::ofstream& outputFile) {
             auto r = (netid & (1 << b)) ? 1 : -1;
             for (int x = 0; x+1 < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
                 Clause c1, c2;
-                c1.vars.emplace_back(varsX[id(x, y, z)]);
-                c2.vars.emplace_back(varsX[id(x, y, z)]);
-                c1.vars.emplace_back(r * (b + varsN[id(x, y, z)]));
-                c2.vars.emplace_back(r * (b + varsN[id(x+1, y, z)]));
+                c1.emplace_back(varsX[id(x, y, z)]);
+                c2.emplace_back(varsX[id(x, y, z)]);
+                c1.emplace_back(r * (b + varsN[id(x, y, z)]));
+                c2.emplace_back(r * (b + varsN[id(x+1, y, z)]));
                 clauses.emplace_back(c1);
                 clauses.emplace_back(c2);
             }
             for (int x = 0; x < num_x; x++) for (int y = 0; y+1 < num_y; y++) for (int z = 0; z < num_z; z++) {
                 Clause c1, c2;
-                c1.vars.emplace_back(varsY[id(x, y, z)]);
-                c2.vars.emplace_back(varsY[id(x, y, z)]);
-                c1.vars.emplace_back(r * (b + varsN[id(x, y, z)]));
-                c2.vars.emplace_back(r * (b + varsN[id(x, y, z)]));
+                c1.emplace_back(varsY[id(x, y, z)]);
+                c2.emplace_back(varsY[id(x, y, z)]);
+                c1.emplace_back(r * (b + varsN[id(x, y, z)]));
+                c2.emplace_back(r * (b + varsN[id(x, y, z)]));
                 clauses.emplace_back(c1);
                 clauses.emplace_back(c2);
             }
             for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z+1 < num_z; z++) {
                 Clause c1, c2;
-                c1.vars.emplace_back(varsZ[id(x, y, z)]);
-                c2.vars.emplace_back(varsZ[id(x, y, z)]);
-                c1.vars.emplace_back(r * (b + varsN[id(x, y, z)]));
-                c2.vars.emplace_back(r * (b + varsN[id(x, y, z)]));
+                c1.emplace_back(varsZ[id(x, y, z)]);
+                c2.emplace_back(varsZ[id(x, y, z)]);
+                c1.emplace_back(r * (b + varsN[id(x, y, z)]));
+                c2.emplace_back(r * (b + varsN[id(x, y, z)]));
                 clauses.emplace_back(c1);
                 clauses.emplace_back(c2);
             }
@@ -307,7 +312,6 @@ void Router::postProcess() {
         path.emplace_back(net.s);
         std::set<Point> vis{};
         while (path.back() != net.t) {
-            int cnt = 0;
             auto np = neighbor(path.back());
             auto ne = nearedge(path.back(), netid);
             assert(np.size() == ne.size());

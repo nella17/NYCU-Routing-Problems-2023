@@ -24,6 +24,7 @@ public:
         std::vector<int> vars;
         Clause();
         Clause(std::vector<int>);
+        int& emplace_back(int);
     };
 
 private:
