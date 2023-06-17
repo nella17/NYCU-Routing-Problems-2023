@@ -80,6 +80,9 @@ void Router::generateGraph() {
         pin_node[id(net.s.x, net.s.y, net.s.z)] = netid;
         pin_node[id(net.t.x, net.t.y, net.t.z)] = netid;
     }
+    for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) {
+        std::cerr << pin_node[id(x, y, 0)] << " \n"[y+1==num_y];
+    }
 }
 
 std::vector<int> Router::nearedge(int x, int y, int z, int netid) {
@@ -130,9 +133,11 @@ void Router::generateClauses(std::ofstream& outputFile) {
     zedge0    = yedge0 + num_x * (num_y-1) * num_z * num_nets;
     variables = zedge0 + num_x * num_y * (num_z-1) * num_nets;
 
+    std::cerr _ node0 _ xedge0 _ yedge0 _ zedge0 _ variables _ std::endl;
+
     varsN.assign((size_t)num_node, 0);
     for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++)
-        varsN[id(x, y, z)] = node0 + x * num_y * num_z * num_nets + y * num_z * num_nets + z * num_nets;
+        varsN[id(x, y, z)] = node0 + x * num_y * num_z * m + y * num_z * m + z * m;
 
     varsX.assign((size_t)num_node, 0);
     for (int x = 0; x+1 < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++)
@@ -156,11 +161,17 @@ void Router::generateClauses(std::ofstream& outputFile) {
     // (X and Y)' = X' or Y'
 
     clauses.clear();
+    auto add_clause = [&](Clause c) {
+        std::cerr _ "  add_clause :" _ c _ std::endl;
+        clauses.emplace_back(c);
+    };
+
     for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
         auto netid = pin_node[id(x, y, z)];
         if (netid == num_nets) {
             auto nei = nearedge(x, y, z, 0);
             auto size = nei.size();
+            std::cerr _ "non-pin node" _ x _ y _ z _ ":"; for (auto k: nei) std::cerr _ k; std::cerr _ std::endl;
             // not choose 3
             for (int nid = 0; nid < num_nets; nid++) {
                 for (auto&& ids: comb_id(size, 3)) {
@@ -169,7 +180,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
                         auto k = nei[i] + nid;
                         c.emplace_back(-k);
                     }
-                    clauses.emplace_back(c);
+                    add_clause(c);
                 }
             }
             // not choose 1
@@ -183,19 +194,21 @@ void Router::generateClauses(std::ofstream& outputFile) {
                         else
                             c.emplace_back(k);
                     }
-                    clauses.emplace_back(c);
+                    add_clause(c);
                 }
             }
         } else {
             auto nei = nearedge(x, y, z, netid);
             auto size = nei.size();
+            std::cerr _ "pin node" _ x _ y _ z _ ":"; for (auto k: nei) std::cerr _ k; std::cerr _ std::endl;
             // select 1 edge
-            clauses.emplace_back(nei);
+            add_clause(nei);
+            // not select 2+ edge
             for (auto&& ids: comb_id(size, 2)) {
                 Clause c;
                 for (auto i: ids)
                     c.emplace_back(-nei[i]);
-                clauses.emplace_back(c);
+                add_clause(c);
             }
             // set node used by netid
             {
@@ -205,12 +218,13 @@ void Router::generateClauses(std::ofstream& outputFile) {
                     auto id = start + b;
                     auto r = (netid & (1 << b)) ? 1 : -1;
                     c.emplace_back(id * r);
-                    clauses.emplace_back(c);
+                    add_clause(c);
                 }
             }
         }
     }
 
+    std::cerr _ "edge" _ std::endl;
     for (auto e: varsE) {
         for (auto&& ids: comb_id((size_t)num_nets, 2)) {
             Clause c;
@@ -218,39 +232,46 @@ void Router::generateClauses(std::ofstream& outputFile) {
                 auto k = e + (int)i;
                 c.emplace_back(-k);
             }
-            clauses.emplace_back(c);
+            add_clause(c);
         }
     }
 
     for (int netid = 0; netid < num_nets; netid++) {
+        std::cerr _ "net" _ netid _ std::endl;
         for (int b = 0; b < m; b++) {
             auto r = (netid & (1 << b)) ? 1 : -1;
+            std::cerr _ " x" _ b _ r _ std::endl;
             for (int x = 0; x+1 < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
                 Clause c1, c2;
-                c1.emplace_back(varsX[id(x, y, z)]);
-                c2.emplace_back(varsX[id(x, y, z)]);
+                auto k = varsX[id(x, y, z)] + netid;
+                c1.emplace_back(-k);
+                c2.emplace_back(-k);
                 c1.emplace_back(r * (b + varsN[id(x, y, z)]));
                 c2.emplace_back(r * (b + varsN[id(x+1, y, z)]));
-                clauses.emplace_back(c1);
-                clauses.emplace_back(c2);
+                add_clause(c1);
+                add_clause(c2);
             }
+            std::cerr _ " y" _ b _ r _ std::endl;
             for (int x = 0; x < num_x; x++) for (int y = 0; y+1 < num_y; y++) for (int z = 0; z < num_z; z++) {
                 Clause c1, c2;
-                c1.emplace_back(varsY[id(x, y, z)]);
-                c2.emplace_back(varsY[id(x, y, z)]);
+                auto k = varsY[id(x, y, z)] + netid;
+                c1.emplace_back(-k);
+                c2.emplace_back(-k);
                 c1.emplace_back(r * (b + varsN[id(x, y, z)]));
                 c2.emplace_back(r * (b + varsN[id(x, y, z)]));
-                clauses.emplace_back(c1);
-                clauses.emplace_back(c2);
+                add_clause(c1);
+                add_clause(c2);
             }
+            std::cerr _ " z" _ b _ r _ std::endl;
             for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z+1 < num_z; z++) {
                 Clause c1, c2;
-                c1.emplace_back(varsZ[id(x, y, z)]);
-                c2.emplace_back(varsZ[id(x, y, z)]);
+                auto k = varsZ[id(x, y, z)] + netid;
+                c1.emplace_back(-k);
+                c2.emplace_back(-k);
                 c1.emplace_back(r * (b + varsN[id(x, y, z)]));
                 c2.emplace_back(r * (b + varsN[id(x, y, z)]));
-                clauses.emplace_back(c1);
-                clauses.emplace_back(c2);
+                add_clause(c1);
+                add_clause(c2);
             }
         }
     }
@@ -285,9 +306,9 @@ bool Router::readSolverResult(std::ifstream& inputFile, int) {
             break;
         }
     }
+    std::cerr _ status _ vars _ std::endl;
     assert(!status.empty() and status != "UNSATISFIABLE");
     assignment.resize((size_t)variables);
-    std::cerr _ status _ vars _ std::endl;
     std::stringstream ss(vars);
     for (int x; ss >> x; )
         if (x > 0)
