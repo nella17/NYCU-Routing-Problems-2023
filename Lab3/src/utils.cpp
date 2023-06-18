@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+// https://rosettacode.org/wiki/Combinations#C.2B.2B
 std::vector<std::vector<bool>> comb(size_t n, size_t k) {
     std::vector<std::vector<bool>> r{};
     if (k == 0 or k > n) return r;
