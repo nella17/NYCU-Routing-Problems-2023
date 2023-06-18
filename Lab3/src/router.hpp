@@ -19,6 +19,7 @@ public:
     };
 
     struct Net {
+        int id;
         std::string name;
         Point s, t;
         std::vector<Point> path;

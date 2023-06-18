@@ -9,6 +9,7 @@
 #include <set>
 #include <sstream>
 #include <utility>
+#include <random>
 #include "utils.hpp"
 
 Router::Point::Point(int _x, int _y, int _z): x(_x), y(_y), z(_z) {}
@@ -32,8 +33,11 @@ void Router::readCircuitSpec(std::ifstream& inputFile) {
     inputFile >> word >> via_cost;
     inputFile >> word >> num_nets;
     nets.resize((size_t)num_nets);
-    for (auto &net: nets)
+    for (int netid = 0; netid < num_nets; netid++) {
+        auto &net = nets[(size_t)netid];
+        net.id = netid;
         inputFile >> net.name >> net.s >> net.t;
+    }
 
     m = (int)std::ceil(std::log2(num_nets));
 }
@@ -282,6 +286,9 @@ void Router::generateClauses(std::ofstream& outputFile) {
     for (auto &c: clauses)
         if (!c.weight)
             c.weight = weight;
+    
+    std::mt19937 rng(0);
+    std::shuffle(ALL(clauses), rng);
 
     std::cout << "p wcnf" _ variables-1 _ clauses.size() _ weight << std::endl;
     outputFile << "p wcnf" _ variables-1 _ clauses.size() _ weight << '\n';
@@ -307,6 +314,7 @@ bool Router::readSolverResult(std::ifstream& inputFile, int) {
             break;
         }
     }
+
     std::cerr _ status _ std::endl;
     assert(!status.empty() and status != "UNSATISFIABLE");
     assignment.resize((size_t)variables);
@@ -316,10 +324,7 @@ bool Router::readSolverResult(std::ifstream& inputFile, int) {
             assignment[(size_t)x] = true;
         else
             assignment[(size_t)-x] = false;
-    return true;
-}
 
-void Router::postProcess() {
     node.resize((size_t)num_node);
     for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
         int v = 0, start = varsN[id(x, y, z)];
@@ -329,6 +334,7 @@ void Router::postProcess() {
         node[id(x, y, z)] = used ? v : -1;
     }
     print_node(node);
+
     for (int netid = 0; netid < num_nets; netid++) {
         auto& net = nets[(size_t)netid];
         auto& path = net.path;
@@ -352,6 +358,11 @@ void Router::postProcess() {
             path.emplace_back(np[found[0]]);
         }
     }
+
+    return true;
+}
+
+void Router::postProcess() {
 }
 
 void Router::printRoutingResult(std::ofstream& outputFile) {
@@ -361,6 +372,9 @@ void Router::printRoutingResult(std::ofstream& outputFile) {
     outputFile << "y_coors" _ corY.size() << '\n';
     for (auto it = corY.begin(); it != corY.end(); )
         outputFile << *it << " \n"[++it == corY.end()];
+    std::sort(ALL(nets), [&](auto a, auto b) {
+        return a.id < b.id;
+    });
     for (auto& net: nets) {
         outputFile << net.name _ net.path.size() << '\n';
         for (auto& p: net.path)
