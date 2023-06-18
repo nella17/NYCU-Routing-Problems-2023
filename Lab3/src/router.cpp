@@ -162,7 +162,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
 
     clauses.clear();
     auto add_clause = [&](Clause c) {
-        std::cerr _ "  add_clause :" _ c _ std::endl;
+        // std::cerr _ "  add_clause :" _ c _ std::endl;
         clauses.emplace_back(c);
     };
 
@@ -258,7 +258,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
                 c1.emplace_back(-k);
                 c2.emplace_back(-k);
                 c1.emplace_back(r * (b + varsN[id(x, y, z)]));
-                c2.emplace_back(r * (b + varsN[id(x, y, z)]));
+                c2.emplace_back(r * (b + varsN[id(x, y+1, z)]));
                 add_clause(c1);
                 add_clause(c2);
             }
@@ -269,7 +269,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
                 c1.emplace_back(-k);
                 c2.emplace_back(-k);
                 c1.emplace_back(r * (b + varsN[id(x, y, z)]));
-                c2.emplace_back(r * (b + varsN[id(x, y, z)]));
+                c2.emplace_back(r * (b + varsN[id(x, y, z+1)]));
                 add_clause(c1);
                 add_clause(c2);
             }
@@ -283,6 +283,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
         if (!c.weight)
             c.weight = weight;
 
+    std::cout << "p wcnf" _ variables _ clauses.size() _ weight << std::endl;
     outputFile << "p wcnf" _ variables _ clauses.size() _ weight << '\n';
     for (auto &c: clauses)
         outputFile << c << '\n';
@@ -326,6 +327,8 @@ void Router::postProcess() {
             v |= assignment[size_t(start+b)] << b;
         node[id(x, y, z)] = v;
     }
+    for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++)
+        std::cerr << node[id(x, y, 0)] << " \n"[y+1==num_y];
     for (int netid = 0; netid < num_nets; netid++) {
         auto& net = nets[(size_t)netid];
         auto& path = net.path;
@@ -336,14 +339,17 @@ void Router::postProcess() {
             auto np = neighbor(path.back());
             auto ne = nearedge(path.back(), netid);
             assert(np.size() == ne.size());
+            std::vector<size_t> found{};
             for (size_t i = 0, size = np.size(); i < size; i++) {
                 if (node[id(np[i])] == netid and assignment[(size_t)ne[i]]) {
                     if (path.size() < 2 or path[path.size()-2] != np[i]) {
-                        path.emplace_back(np[i]);
-                        break;
+                        found.emplace_back(i);
                     }
                 }
             }
+            std::cerr _ found.size() _ std::endl;
+            assert(found.size() == 1);
+            path.emplace_back(np[found[0]]);
         }
     }
 }

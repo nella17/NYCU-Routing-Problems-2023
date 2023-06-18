@@ -1,11 +1,17 @@
 #!/bin/bash
-set -eux
+set -ux
 make -j
 
-for i in {1..5}; do
+for i in {0..5}; do
   c="./case/case$i.txt"
   r="./case/result$i.txt"
-  ./Lab3 "$c" "$r"
-  python plotter.py "$r"
-  ./verifier "$r" "$c"
+  p="./case/result$i.png"
+  time ./Lab3 "$c" "$r" 2>/dev/null
+  if [ $? = 0 ]; then
+    python plotter.py "$r"
+    mv path.png "$p"
+    ./verifier "$r" "$c"
+  else
+    rm "$r" "$p"
+  fi
 done

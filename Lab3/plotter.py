@@ -40,5 +40,7 @@ fig.tight_layout()
 ax.tick_params(axis='both', which='minor', labelsize=16)
 
 # 儲存和顯示圖片
-plt.savefig("path.png")
-#  plt.show()
+if len(sys.argv) > 2:
+    plt.show()
+else:
+    plt.savefig("path.png")
