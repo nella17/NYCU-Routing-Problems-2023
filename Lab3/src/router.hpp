@@ -49,6 +49,8 @@ private:
     std::vector<std::array<int, 3>> varsE;
     std::vector<int> corX, corY, node;
     std::vector<bool> assignment;
+    
+    void print_node(const std::vector<int>&);
 
     size_t id(int, int, int);
     size_t id(Point);

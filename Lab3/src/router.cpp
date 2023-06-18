@@ -59,6 +59,16 @@ size_t Router::id(int x, int y, int z) {
 size_t Router::id(Point p) {
     return id(p.x, p.y, p.z);
 }
+    
+void Router::print_node(const std::vector<int>& v) {
+    for (int z = 0; z < num_z; z++) {
+        for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) {
+            std::cerr << std::setw(std::max(2, (int)std::ceil(std::log10(num_nets))))
+                << v[id(x, y, z)] << " \n"[y+1==num_y];
+        }
+        std::cerr _ std::string(10, '-') _ std::endl;
+    }
+}
 
 void Router::generateGraph() {
     std::set<int> sX, sY{};
@@ -83,13 +93,7 @@ void Router::generateGraph() {
         pin_node[id(net.s.x, net.s.y, net.s.z)] = netid;
         pin_node[id(net.t.x, net.t.y, net.t.z)] = netid;
     }
-    for (int z = 0; z < num_z; z++) {
-        for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) {
-            std::cerr << std::setw(std::max(2, (int)std::ceil(std::log10(num_nets))))
-                << pin_node[id(x, y, z)] << " \n"[y+1==num_y];
-        }
-        std::cerr _ std::string(10, '-') _ std::endl;
-    }
+    print_node(pin_node);
 }
 
 std::vector<int> Router::nearedge(int x, int y, int z, int netid) {
@@ -324,13 +328,7 @@ void Router::postProcess() {
         bool used = assignment[size_t(start + m)];
         node[id(x, y, z)] = used ? v : -1;
     }
-    for (int z = 0; z < num_z; z++) {
-        for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) {
-            std::cerr << std::setw(std::max(2, (int)std::ceil(std::log10(num_nets))))
-                << node[id(x, y, z)] << " \n"[y+1==num_y];
-        }
-        std::cerr _ std::string(10, '-') _ std::endl;
-    }
+    print_node(node);
     for (int netid = 0; netid < num_nets; netid++) {
         auto& net = nets[(size_t)netid];
         auto& path = net.path;
