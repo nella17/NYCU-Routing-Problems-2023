@@ -73,7 +73,7 @@ void Router::generateGraph() {
     generate_coors(corY, sY, min_y, max_y, min_pitch_size);
     num_y = (int)corY.size();
     num_node = num_x * num_y * num_z;
-    pin_node.assign((size_t)num_node, num_nets);
+    pin_node.assign((size_t)num_node, -1);
     for (int netid = 0; netid < num_nets; netid++) {
         auto &net = nets[(size_t)netid];
         net.s.x = int( std::lower_bound(ALL(corX), net.s.x) - corX.begin() );
@@ -83,8 +83,12 @@ void Router::generateGraph() {
         pin_node[id(net.s.x, net.s.y, net.s.z)] = netid;
         pin_node[id(net.t.x, net.t.y, net.t.z)] = netid;
     }
-    for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) {
-        std::cerr << std::setw((int)std::ceil(std::log10(num_nets))) << pin_node[id(x, y, 0)] << " \n"[y+1==num_y];
+    for (int z = 0; z < num_z; z++) {
+        for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) {
+            std::cerr << std::setw(std::max(2, (int)std::ceil(std::log10(num_nets))))
+                << pin_node[id(x, y, z)] << " \n"[y+1==num_y];
+        }
+        std::cerr _ std::string(10, '-') _ std::endl;
     }
 }
 
@@ -164,7 +168,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
 
     for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
         auto netid = pin_node[id(x, y, z)];
-        if (netid == num_nets) {
+        if (netid == -1) {
             auto nei = nearedge(x, y, z, 0);
             auto size = nei.size();
             // std::cerr _ "non-pin node" _ x _ y _ z _ ":"; for (auto k: nei) std::cerr _ k; std::cerr _ std::endl;
@@ -306,8 +310,13 @@ void Router::postProcess() {
         bool used = assignment[size_t(start + m)];
         node[id(x, y, z)] = used ? v : -1;
     }
-    for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++)
-        std::cerr << std::setw((int)std::ceil(std::log10(num_nets))) << node[id(x, y, 0)] << " \n"[y+1==num_y];
+    for (int z = 0; z < num_z; z++) {
+        for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) {
+            std::cerr << std::setw(std::max(2, (int)std::ceil(std::log10(num_nets))))
+                << node[id(x, y, z)] << " \n"[y+1==num_y];
+        }
+        std::cerr _ std::string(10, '-') _ std::endl;
+    }
     for (int netid = 0; netid < num_nets; netid++) {
         auto& net = nets[(size_t)netid];
         auto& path = net.path;

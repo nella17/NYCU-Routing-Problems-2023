@@ -5,3 +5,6 @@ verifier
 sat_result.txt
 path.png
 clause.sat
+*.sat
+*.sat.txt
+*.log
