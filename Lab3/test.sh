@@ -28,6 +28,7 @@ task() {
 }
 
 for i in {0..5}; do
-  task "$i" &
+  l="./case/test$i.log"
+  task "$i" >"$l" 2>&1 &
 done
 wait
