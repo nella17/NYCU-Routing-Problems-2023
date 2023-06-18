@@ -140,7 +140,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
 
     varsN.assign((size_t)num_node, 0);
     for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++)
-        varsN[id(x, y, z)] = node0 + x * num_y * num_z * m + y * num_z * m + z * m;
+        varsN[id(x, y, z)] = node0 + x * num_y * num_z * (m+1) + y * num_z * (m+1) + z * (m+1);
 
     varsE.assign((size_t)num_node, {});
 
@@ -153,6 +153,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
     }
 
     // X -> Y = X' or Y
+    // X <-> Y = (X or Y') and (X' or Y)
     // (X and Y)' = X' or Y'
 
     clauses.clear();
@@ -213,6 +214,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
                     auto r = (netid & (1 << b)) ? 1 : -1;
                     add_clause({ id * r });
                 }
+                add_clause({ start + m });
             }
         }
     }
@@ -236,9 +238,13 @@ void Router::generateClauses(std::ofstream& outputFile) {
         for (int z = 0; z+isZ < num_z; z++) {
             auto n1 = varsN[id(x, y, z)];
             auto n2 = varsN[id(x+isX, y+isY, z+isZ)];
+            // E{1-n} -> Nm
+            // = (E{1-n}' or Nm)
+            // = (&(Ei') or Nm)
             for (int netid = 0; netid < num_nets; netid++) {
-                // std::cerr _ "net" _ netid _ std::endl;
                 auto k = varsE[id(x, y, z)][d] + netid;
+                add_clause({ -k, n1 + m });
+                add_clause({ -k, n2 + m });
                 for (int b = 0; b < m; b++) {
                     auto r = (netid & (1 << b)) ? 1 : -1;
                     add_clause({ -k, r * (b + n1) });
@@ -297,7 +303,8 @@ void Router::postProcess() {
         int v = 0, start = varsN[id(x, y, z)];
         for (int b = 0; b < m; b++)
             v |= assignment[size_t(start+b)] << b;
-        node[id(x, y, z)] = v;
+        bool used = assignment[size_t(start + m)];
+        node[id(x, y, z)] = used ? v : -1;
     }
     for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++)
         std::cerr << std::setw((int)std::ceil(std::log10(num_nets))) << node[id(x, y, 0)] << " \n"[y+1==num_y];
