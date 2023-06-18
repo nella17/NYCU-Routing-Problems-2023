@@ -229,16 +229,16 @@ void Router::generateClauses(std::ofstream& outputFile) {
         }
     }
 
-    for (int netid = 0; netid < num_nets; netid++) {
-        // std::cerr _ "net" _ netid _ std::endl;
-        for (size_t d = 0; d < 3; d++) {
-            auto isX = d==DIR::X, isY = d==DIR::Y, isZ = d==DIR::Z;
-            for (int x = 0; x+isX < num_x; x++)
-            for (int y = 0; y+isY < num_y; y++)
-            for (int z = 0; z+isZ < num_z; z++) {
+    for (size_t d = 0; d < 3; d++) {
+        auto isX = d==DIR::X, isY = d==DIR::Y, isZ = d==DIR::Z;
+        for (int x = 0; x+isX < num_x; x++)
+        for (int y = 0; y+isY < num_y; y++)
+        for (int z = 0; z+isZ < num_z; z++) {
+            auto n1 = varsN[id(x, y, z)];
+            auto n2 = varsN[id(x+isX, y+isY, z+isZ)];
+            for (int netid = 0; netid < num_nets; netid++) {
+                // std::cerr _ "net" _ netid _ std::endl;
                 auto k = varsE[id(x, y, z)][d] + netid;
-                auto n1 = varsN[id(x, y, z)];
-                auto n2 = varsN[id(x+isX, y+isY, z+isZ)];
                 for (int b = 0; b < m; b++) {
                     auto r = (netid & (1 << b)) ? 1 : -1;
                     add_clause({ -k, r * (b + n1) });
