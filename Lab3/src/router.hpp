@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -8,6 +9,10 @@
 
 class Router {
 public:
+    enum DIR : size_t {
+        X, Y, Z
+    };
+
     struct Point {
         int x, y, z;
         Point(int = 0, int = 0, int = 0);
@@ -35,10 +40,12 @@ private:
     int num_nets;
     std::vector<Net> nets;
 
-    int m, num_node, node0, xedge0, yedge0, zedge0, variables, weight;
+    int m, num_node, node0, variables, weight;
+    std::array<int, 3> edge0;
     std::vector<Clause> clauses{};
 
-    std::vector<int> pin_node, varsN, varsX, varsY, varsZ, varsE;
+    std::vector<int> pin_node, varsN;
+    std::vector<std::array<int, 3>> varsE;
     std::vector<int> corX, corY, node;
     std::vector<bool> assignment;
 

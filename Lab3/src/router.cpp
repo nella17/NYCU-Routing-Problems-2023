@@ -1,12 +1,14 @@
 #include "router.hpp"
 
 #include <algorithm>
-#include <utility>
+#include <cmath>
+#include <cassert>
+#include <iostream>
+#include <iomanip>
 #include <numeric>
 #include <set>
 #include <sstream>
-#include <cmath>
-#include <cassert>
+#include <utility>
 #include "utils.hpp"
 
 Router::Point::Point(int _x, int _y, int _z): x(_x), y(_y), z(_z) {}
@@ -81,7 +83,7 @@ void Router::generateGraph() {
         pin_node[id(net.t.x, net.t.y, net.t.z)] = netid;
     }
     for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) {
-        std::cerr << pin_node[id(x, y, 0)] << " \n"[y+1==num_y];
+        std::cerr << std::setw((int)std::ceil(std::log10(num_nets))) << pin_node[id(x, y, 0)] << " \n"[y+1==num_y];
     }
 }
 
@@ -89,17 +91,17 @@ std::vector<int> Router::nearedge(int x, int y, int z, int netid) {
     std::vector<int> nei{};
     nei.reserve(6);
     if (x >= 1)
-        nei.emplace_back(netid + varsX[id(x-1, y, z)]);
+        nei.emplace_back(netid + varsE[id(x-1, y, z)][DIR::X]);
     if (x+1 < num_x)
-        nei.emplace_back(netid + varsX[id(x, y, z)]);
+        nei.emplace_back(netid + varsE[id(x, y, z)][DIR::X]);
     if (y >= 1)
-        nei.emplace_back(netid + varsY[id(x, y-1, z)]);
+        nei.emplace_back(netid + varsE[id(x, y-1, z)][DIR::Y]);
     if (y+1 < num_y)
-        nei.emplace_back(netid + varsY[id(x, y, z)]);
+        nei.emplace_back(netid + varsE[id(x, y, z)][DIR::Y]);
     if (z >= 1)
-        nei.emplace_back(netid + varsZ[id(x, y, z-1)]);
+        nei.emplace_back(netid + varsE[id(x, y, z-1)][DIR::Z]);
     if (z+1 < num_z)
-        nei.emplace_back(netid + varsZ[id(x, y, z)]);
+        nei.emplace_back(netid + varsE[id(x, y, z)][DIR::Z]);
     return nei;
 }
 
@@ -127,35 +129,27 @@ std::vector<Router::Point> Router::neighbor(Point p) {
 }
 
 void Router::generateClauses(std::ofstream& outputFile) {
-    node0     = 1;
-    xedge0    = node0  + num_x * num_y * num_z * m;
-    yedge0    = xedge0 + (num_x-1) * num_y * num_z * num_nets;
-    zedge0    = yedge0 + num_x * (num_y-1) * num_z * num_nets;
-    variables = zedge0 + num_x * num_y * (num_z-1) * num_nets;
+    node0           = 1;
+    edge0[DIR::X]   = node0  + num_x * num_y * num_z * (m+1);
+    edge0[DIR::Y]   = edge0[DIR::X] + (num_x-1) * num_y * num_z * num_nets;
+    edge0[DIR::Z]   = edge0[DIR::Y] + num_x * (num_y-1) * num_z * num_nets;
+    variables       = edge0[DIR::Z] + num_x * num_y * (num_z-1) * num_nets;
 
-    std::cerr _ node0 _ xedge0 _ yedge0 _ zedge0 _ variables _ std::endl;
+    std::cerr _ node0 _ edge0[DIR::X] _ edge0[DIR::Y] _ edge0[DIR::Z] _ variables _ std::endl;
 
     varsN.assign((size_t)num_node, 0);
     for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++)
         varsN[id(x, y, z)] = node0 + x * num_y * num_z * m + y * num_z * m + z * m;
 
-    varsX.assign((size_t)num_node, 0);
-    for (int x = 0; x+1 < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++)
-        varsX[id(x, y, z)] = xedge0 + x * num_y * num_z * num_nets + y * num_z * num_nets + z * num_nets;
+    varsE.assign((size_t)num_node, {});
 
-    varsY.assign((size_t)num_node, 0);
-    for (int x = 0; x < num_x; x++) for (int y = 0; y+1 < num_y; y++) for (int z = 0; z < num_z; z++)
-        varsY[id(x, y, z)] = yedge0 + x * (num_y-1) * num_z * num_nets + y * num_z * num_nets + z * num_nets;
-
-    varsZ.assign((size_t)num_node, 0);
-    for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z+1 < num_z; z++)
-        varsZ[id(x, y, z)] = yedge0 + x * num_y * (num_z-1) * num_nets + y * (num_z-1) * num_nets + z * num_nets;
-
-    varsE.clear();
-    varsE.reserve((size_t)(variables - xedge0));
-    for (auto e: varsX) if (e) varsE.emplace_back(e);
-    for (auto e: varsY) if (e) varsE.emplace_back(e);
-    for (auto e: varsZ) if (e) varsE.emplace_back(e);
+    for (size_t d = 0; d < 3; d++) {
+        auto isX = d==DIR::X, isY = d==DIR::Y, isZ = d==DIR::Z;
+        for (int x = 0; x+isX < num_x; x++)
+        for (int y = 0; y+isY < num_y; y++)
+        for (int z = 0; z+isZ < num_z; z++)
+            varsE[id(x, y, z)][d] = edge0[d] + x * (num_y-isY) * (num_z-isZ) * num_nets + y * (num_z-isZ) * num_nets + z * num_nets;
+    }
 
     // X -> Y = X' or Y
     // (X and Y)' = X' or Y'
@@ -171,7 +165,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
         if (netid == num_nets) {
             auto nei = nearedge(x, y, z, 0);
             auto size = nei.size();
-            std::cerr _ "non-pin node" _ x _ y _ z _ ":"; for (auto k: nei) std::cerr _ k; std::cerr _ std::endl;
+            // std::cerr _ "non-pin node" _ x _ y _ z _ ":"; for (auto k: nei) std::cerr _ k; std::cerr _ std::endl;
             // not choose 3
             for (int nid = 0; nid < num_nets; nid++) {
                 for (auto&& ids: comb_id(size, 3)) {
@@ -200,7 +194,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
         } else {
             auto nei = nearedge(x, y, z, netid);
             auto size = nei.size();
-            std::cerr _ "pin node" _ x _ y _ z _ ":"; for (auto k: nei) std::cerr _ k; std::cerr _ std::endl;
+            // std::cerr _ "pin node" _ x _ y _ z _ ":"; for (auto k: nei) std::cerr _ k; std::cerr _ std::endl;
             // select 1 edge
             add_clause(nei);
             // not select 2+ edge
@@ -224,8 +218,8 @@ void Router::generateClauses(std::ofstream& outputFile) {
         }
     }
 
-    std::cerr _ "edge" _ std::endl;
-    for (auto e: varsE) {
+    // std::cerr _ "edge" _ std::endl;
+    for (const auto& ae: varsE) for (auto e: ae) if (e) {
         for (auto&& ids: comb_id((size_t)num_nets, 2)) {
             Clause c;
             for (auto i: ids) {
@@ -237,41 +231,23 @@ void Router::generateClauses(std::ofstream& outputFile) {
     }
 
     for (int netid = 0; netid < num_nets; netid++) {
-        std::cerr _ "net" _ netid _ std::endl;
+        // std::cerr _ "net" _ netid _ std::endl;
         for (int b = 0; b < m; b++) {
             auto r = (netid & (1 << b)) ? 1 : -1;
-            std::cerr _ " x" _ b _ r _ std::endl;
-            for (int x = 0; x+1 < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
-                Clause c1, c2;
-                auto k = varsX[id(x, y, z)] + netid;
-                c1.emplace_back(-k);
-                c2.emplace_back(-k);
-                c1.emplace_back(r * (b + varsN[id(x, y, z)]));
-                c2.emplace_back(r * (b + varsN[id(x+1, y, z)]));
-                add_clause(c1);
-                add_clause(c2);
-            }
-            std::cerr _ " y" _ b _ r _ std::endl;
-            for (int x = 0; x < num_x; x++) for (int y = 0; y+1 < num_y; y++) for (int z = 0; z < num_z; z++) {
-                Clause c1, c2;
-                auto k = varsY[id(x, y, z)] + netid;
-                c1.emplace_back(-k);
-                c2.emplace_back(-k);
-                c1.emplace_back(r * (b + varsN[id(x, y, z)]));
-                c2.emplace_back(r * (b + varsN[id(x, y+1, z)]));
-                add_clause(c1);
-                add_clause(c2);
-            }
-            std::cerr _ " z" _ b _ r _ std::endl;
-            for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z+1 < num_z; z++) {
-                Clause c1, c2;
-                auto k = varsZ[id(x, y, z)] + netid;
-                c1.emplace_back(-k);
-                c2.emplace_back(-k);
-                c1.emplace_back(r * (b + varsN[id(x, y, z)]));
-                c2.emplace_back(r * (b + varsN[id(x, y, z+1)]));
-                add_clause(c1);
-                add_clause(c2);
+            for (size_t d = 0; d < 3; d++) {
+                auto isX = d==DIR::X, isY = d==DIR::Y, isZ = d==DIR::Z;
+                for (int x = 0; x+isX < num_x; x++)
+                for (int y = 0; y+isY < num_y; y++)
+                for (int z = 0; z+isZ < num_z; z++) {
+                    Clause c1, c2;
+                    auto k = varsE[id(x, y, z)][d] + netid;
+                    c1.emplace_back(-k);
+                    c2.emplace_back(-k);
+                    c1.emplace_back(r * (b + varsN[id(x, y, z)]));
+                    c2.emplace_back(r * (b + varsN[id(x+isX, y+isY, z+isZ)]));
+                    add_clause(c1);
+                    add_clause(c2);
+                }
             }
         }
     }
@@ -347,7 +323,7 @@ void Router::postProcess() {
                     }
                 }
             }
-            std::cerr _ found.size() _ std::endl;
+            // std::cerr _ found.size() _ std::endl;
             assert(found.size() == 1);
             path.emplace_back(np[found[0]]);
         }
