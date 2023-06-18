@@ -29,6 +29,7 @@ public:
         std::vector<int> vars;
         Clause();
         Clause(std::vector<int>);
+        Clause(std::initializer_list<int>);
         int& emplace_back(int);
     };
 

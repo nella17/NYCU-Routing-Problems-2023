@@ -15,6 +15,7 @@ Router::Point::Point(int _x, int _y, int _z): x(_x), y(_y), z(_z) {}
 
 Router::Clause::Clause(): weight(0), vars{} {}
 Router::Clause::Clause(std::vector<int> v): weight(0), vars(v) {}
+Router::Clause::Clause(std::initializer_list<int> i): weight(0), vars{ i } {}
 
 int& Router::Clause::emplace_back(int x) {
     assert(x != 0);
@@ -208,11 +209,9 @@ void Router::generateClauses(std::ofstream& outputFile) {
             {
                 auto start = varsN[id(x, y, z)];
                 for (int b = 0; b < m; b++) {
-                    Clause c;
                     auto id = start + b;
                     auto r = (netid & (1 << b)) ? 1 : -1;
-                    c.emplace_back(id * r);
-                    add_clause(c);
+                    add_clause({ id * r });
                 }
             }
         }
@@ -232,21 +231,18 @@ void Router::generateClauses(std::ofstream& outputFile) {
 
     for (int netid = 0; netid < num_nets; netid++) {
         // std::cerr _ "net" _ netid _ std::endl;
-        for (int b = 0; b < m; b++) {
-            auto r = (netid & (1 << b)) ? 1 : -1;
-            for (size_t d = 0; d < 3; d++) {
-                auto isX = d==DIR::X, isY = d==DIR::Y, isZ = d==DIR::Z;
-                for (int x = 0; x+isX < num_x; x++)
-                for (int y = 0; y+isY < num_y; y++)
-                for (int z = 0; z+isZ < num_z; z++) {
-                    Clause c1, c2;
-                    auto k = varsE[id(x, y, z)][d] + netid;
-                    c1.emplace_back(-k);
-                    c2.emplace_back(-k);
-                    c1.emplace_back(r * (b + varsN[id(x, y, z)]));
-                    c2.emplace_back(r * (b + varsN[id(x+isX, y+isY, z+isZ)]));
-                    add_clause(c1);
-                    add_clause(c2);
+        for (size_t d = 0; d < 3; d++) {
+            auto isX = d==DIR::X, isY = d==DIR::Y, isZ = d==DIR::Z;
+            for (int x = 0; x+isX < num_x; x++)
+            for (int y = 0; y+isY < num_y; y++)
+            for (int z = 0; z+isZ < num_z; z++) {
+                auto k = varsE[id(x, y, z)][d] + netid;
+                auto n1 = varsN[id(x, y, z)];
+                auto n2 = varsN[id(x+isX, y+isY, z+isZ)];
+                for (int b = 0; b < m; b++) {
+                    auto r = (netid & (1 << b)) ? 1 : -1;
+                    add_clause({ -k, r * (b + n1) });
+                    add_clause({ -k, r * (b + n2) });
                 }
             }
         }
@@ -304,7 +300,7 @@ void Router::postProcess() {
         node[id(x, y, z)] = v;
     }
     for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++)
-        std::cerr << node[id(x, y, 0)] << " \n"[y+1==num_y];
+        std::cerr << std::setw((int)std::ceil(std::log10(num_nets))) << node[id(x, y, 0)] << " \n"[y+1==num_y];
     for (int netid = 0; netid < num_nets; netid++) {
         auto& net = nets[(size_t)netid];
         auto& path = net.path;
