@@ -13,7 +13,7 @@ task() {
   cd "$d" || exit
   ln -s "$OLDPWD/"{Lab3,'case',open-wbo,plotter.py,verifier} .
 
-  if time ./Lab3 "$c" "$r" 2>/dev/null; then
+  if time ./Lab3 "$c" "$r"; then
     cp clause.sat "$s"
     cp sat_result.txt "$st"
     python plotter.py "$r"
@@ -27,7 +27,7 @@ task() {
   rm -fr "$d"
 }
 
-for i in {0..5}; do
+for i in {0..4}; do
   l="./case/test$i.log"
   task "$i" >"$l" 2>&1 &
 done
