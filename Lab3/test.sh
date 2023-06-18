@@ -2,16 +2,32 @@
 set -ux
 make -j
 
-for i in {0..5}; do
-  c="./case/case$i.txt"
-  r="./case/result$i.txt"
-  p="./case/result$i.png"
-  time ./Lab3 "$c" "$r" 2>/dev/null
-  if [ $? = 0 ]; then
+task() {
+  c="./case/case$1.txt"
+  r="./case/result$1.txt"
+  p="./case/result$1.png"
+  s="./case/result$1.sat"
+  st="./case/result$1.sat.txt"
+
+  d=$(mktemp -d)
+  cd "$d" || exit
+  ln -s "$OLDPWD/"{Lab3,'case',open-wbo,plotter.py,verifier} .
+
+  if time ./Lab3 "$c" "$r" 2>/dev/null; then
+    cp clause.sat "$s"
+    cp sat_result.txt "$st"
     python plotter.py "$r"
     mv path.png "$p"
     ./verifier "$r" "$c"
   else
     rm "$r" "$p"
   fi
+
+  cd "$OLDPWD" || exit
+  rm -fr "$d"
+}
+
+for i in {0..5}; do
+  task "$i" &
 done
+wait
