@@ -155,8 +155,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
         varsN[id(x, y, z)] = node0 + x * num_y * num_z * (m+1) + y * num_z * (m+1) + z * (m+1);
 
     varsE.assign((size_t)num_node, {});
-
-    for (size_t d = 0; d < 3; d++) {
+    for (auto d: { DIR::X, DIR::Y, DIR::Z }) {
         auto isX = d==DIR::X, isY = d==DIR::Y, isZ = d==DIR::Z;
         for (int x = 0; x+isX < num_x; x++)
         for (int y = 0; y+isY < num_y; y++)
@@ -284,7 +283,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
     };
 
     auto gen_edge_use_node_netid = [&]() {
-        for (size_t d = 0; d < 3; d++) {
+        for (auto d: { DIR::X, DIR::Y, DIR::Z }) {
             auto isX = d==DIR::X, isY = d==DIR::Y, isZ = d==DIR::Z;
             for (int x = 0; x+isX < num_x; x++)
             for (int y = 0; y+isY < num_y; y++)
@@ -310,7 +309,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
     };
 
     auto gen_edge_not_2_net = [&]() {
-        for (size_t d = 0; d < 3; d++) {
+        for (auto d: { DIR::X, DIR::Y, DIR::Z }) {
             auto isX = d==DIR::X, isY = d==DIR::Y, isZ = d==DIR::Z;
             for (int x = 0; x+isX < num_x; x++)
             for (int y = 0; y+isY < num_y; y++)
