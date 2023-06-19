@@ -423,8 +423,8 @@ long Router::cost(const Net& n) {
     auto pZ = n.path.front().z;
     for (auto it = next(n.path.begin()); it != n.path.end(); it++) {
         auto nZ = it->z;
-        if (pZ != nZ)
-            c += 1;
+        if (pZ == nZ)
+            c += min_pitch_size;
         else
             c += via_cost;
         pZ = nZ;
@@ -486,7 +486,7 @@ void Router::postProcess() {
     });
     std::cerr _ "orig cost =" _ total_cost _ std::endl;
     for (auto &net: nets) {
-        std::cerr _ "replace" _ net.name _ "\tcost =" _ net.cost;
+        std::cerr _ "\treplace" _ net.name _ "\tcost =" _ net.cost;
         ripup(net);
         newpath(net);
         place(net);
