@@ -461,7 +461,7 @@ void Router::newpath(Net& net) {
         for (auto n: neighbor(c)) {
             auto nid = id(n);
             if (node[nid] == -1) {
-                auto nd = n.z == c.z ? 1 : via_cost;
+                auto nd = n.z == c.z ? min_pitch_size : via_cost;
                 push(n, c, cd + nd);
             }
         }
