@@ -264,7 +264,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
         }
     };
 
-    auto gen_node_used_bit = [&]() {
+    auto gen_used_node_sel_1_edge = [&]() {
         for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
             auto netid = pin_node[id(x, y, z)];
             if (netid == -1) {
@@ -283,7 +283,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
         }
     };
 
-    auto gen_edge_use_node_bit = [&]() {
+    auto gen_edge_use_node_netid = [&]() {
         for (size_t d = 0; d < 3; d++) {
             auto isX = d==DIR::X, isY = d==DIR::Y, isZ = d==DIR::Z;
             for (int x = 0; x+isX < num_x; x++)
@@ -309,7 +309,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
         }
     };
 
-    auto gen_edge_only_1_bit = [&]() {
+    auto gen_edge_not_2_net = [&]() {
         for (size_t d = 0; d < 3; d++) {
             auto isX = d==DIR::X, isY = d==DIR::Y, isZ = d==DIR::Z;
             for (int x = 0; x+isX < num_x; x++)
@@ -329,11 +329,11 @@ void Router::generateClauses(std::ofstream& outputFile) {
     };
 
     gen_pin_node_net_used();
+    gen_used_node_sel_1_edge();
+    gen_edge_not_2_net();
     gen_pin_node_sel_1_edge();
-    gen_node_used_bit();
-    gen_edge_use_node_bit();
-    gen_edge_only_1_bit();
     gen_pin_node_not_sel_2_edge();
+    gen_edge_use_node_netid();
     gen_non_pin_node_not_sel_3_edge();
     gen_non_pin_node_not_sel_1_edge();
 
