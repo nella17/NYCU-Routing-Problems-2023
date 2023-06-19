@@ -78,6 +78,7 @@ public:
 
 bool operator==(const Router::Point&, const Router::Point&);
 bool operator!=(const Router::Point&, const Router::Point&);
+bool operator<(const Router::Point&, const Router::Point&);
 std::istream& operator>>(std::istream&, Router::Point&);
 std::ostream& operator<<(std::ostream&, const Router::Point&);
 std::ostream& operator<<(std::ostream&, const Router::Clause&);

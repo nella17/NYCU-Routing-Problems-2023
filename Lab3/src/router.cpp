@@ -444,19 +444,19 @@ void Router::place(const Net& net) {
 void Router::newpath(Net& net) {
     std::vector<long> dist((size_t)num_node, -1);
     std::vector<Point> from((size_t)num_node);
-    std::queue<Point> que{};
+    priority_queue_greater<std::pair<long, Point>> que{};
     auto push = [&](Point p, Point f, long d) {
         auto idx = id(p);
-        if (dist[idx] != -1) return;
+        if (dist[idx] != -1 and dist[idx] <= d) return;
         dist[idx] = d;
         from[idx] = f;
-        que.emplace(p);
+        que.emplace(d, p);
     };
     push(net.s, net.s, 0);
     auto tidx = id(net.t);
     while (dist[tidx] == -1) {
-        auto c = que.front(); que.pop();
-        auto cd = dist[id(c)];
+        auto [cd, c] = que.top(); que.pop();
+        if (cd != dist[id(c)]) continue;
         for (auto n: neighbor(c)) {
             auto nid = id(n);
             if (node[nid] == -1) {
@@ -477,25 +477,32 @@ void Router::newpath(Net& net) {
 void Router::postProcess() {
     for (auto &net: nets)
         net.cost = cost(net);
-    std::sort(ALL(nets), [&](auto a, auto b) {
-        return a.cost > b.cost;
-    });
     auto total_cost = std::accumulate(ALL(nets), 0l, [&](auto s, auto n) {
         return s + n.cost;
     });
     std::cerr _ "orig cost =" _ total_cost _ std::endl;
-    for (auto &net: nets) {
-        std::cerr _ "\treplace" _ net.name _ "\tcost =" _ net.cost;
-        ripup(net);
-        newpath(net);
-        place(net);
-        net.cost = cost(net);
-        std::cerr _ "->" _ net.cost _ std::endl;
+    bool opt = true;
+    for (int r = 0; opt; r++) {
+        opt = false;
+        std::sort(ALL(nets), [&](auto a, auto b) {
+            return a.cost > b.cost;
+        });
+        for (auto &net: nets) {
+            auto old_cost = net.cost;
+            ripup(net);
+            newpath(net);
+            place(net);
+            net.cost = cost(net);
+            if (net.cost != old_cost) {
+                opt = true;
+                std::cerr _ "\treplace" _ net.name _ "\tcost =" _ old_cost _ "->" _ net.cost _ std::endl;
+            }
+        }
+        total_cost = std::accumulate(ALL(nets), 0l, [&](auto s, auto n) {
+            return s + n.cost;
+        });
+        std::cerr _ "round" _ r _ "new cost =" _ total_cost _ std::endl;
     }
-    total_cost = std::accumulate(ALL(nets), 0l, [&](auto s, auto n) {
-        return s + n.cost;
-    });
-    std::cerr _ "new cost =" _ total_cost _ std::endl;
 }
 
 void Router::printRoutingResult(std::ofstream& outputFile) {
@@ -521,6 +528,14 @@ bool operator==(const Router::Point& a, const Router::Point& b) {
 
 bool operator!=(const Router::Point& a, const Router::Point& b) {
     return a.x != b.x or a.y != b.y or a.z != b.z;
+}
+
+bool operator<(const Router::Point& a, const Router::Point& b) {
+    if (a.x != b.x)
+        return a.x < b.x;
+    if (a.y != b.y)
+        return a.y < b.y;
+    return a.z < b.z;
 }
 
 std::istream& operator>>(std::istream& is, Router::Point& p) {
