@@ -329,12 +329,12 @@ void Router::generateClauses(std::ofstream& outputFile) {
     };
 
     gen_pin_node_net_used();
+    gen_pin_node_sel_1_edge();
     gen_node_used_bit();
     gen_edge_use_node_bit();
-    gen_pin_node_sel_1_edge();
     gen_edge_only_1_bit();
-    gen_non_pin_node_not_sel_3_edge();
     gen_pin_node_not_sel_2_edge();
+    gen_non_pin_node_not_sel_3_edge();
     gen_non_pin_node_not_sel_1_edge();
 
     weight = 1;
