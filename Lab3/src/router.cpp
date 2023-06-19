@@ -175,14 +175,11 @@ void Router::generateClauses(std::ofstream& outputFile) {
         clauses.emplace_back(c);
     };
 
-    auto gen_pin_node_sel_1_edge = [&]() {
+    auto gen_pin_node_net_used = [&]() {
         for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
             auto netid = pin_node[id(x, y, z)];
             if (netid != -1) {
                 auto start = varsN[id(x, y, z)];
-                auto ne = nearedge(x, y, z, netid);
-                // select 1 edge
-                add_clause(ne);
                 // set node used by netid
                 for (int b = 0; b < m; b++) {
                     auto id = start + b;
@@ -190,6 +187,17 @@ void Router::generateClauses(std::ofstream& outputFile) {
                     add_clause({ id * r });
                 }
                 add_clause({ start + m });
+            }
+        }
+    };
+
+    auto gen_pin_node_sel_1_edge = [&]() {
+        for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
+            auto netid = pin_node[id(x, y, z)];
+            if (netid != -1) {
+                auto ne = nearedge(x, y, z, netid);
+                // select 1 edge
+                add_clause(ne);
             }
         }
     };
@@ -320,6 +328,7 @@ void Router::generateClauses(std::ofstream& outputFile) {
         }
     };
 
+    gen_pin_node_net_used();
     gen_node_used_bit();
     gen_edge_use_node_bit();
     gen_pin_node_sel_1_edge();
