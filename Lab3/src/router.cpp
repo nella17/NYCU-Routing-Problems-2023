@@ -9,7 +9,6 @@
 #include <set>
 #include <sstream>
 #include <utility>
-#include <random>
 #include "utils.hpp"
 
 Router::Point::Point(int _x, int _y, int _z): x(_x), y(_y), z(_z) {}
@@ -177,57 +176,11 @@ void Router::generateClauses(std::ofstream& outputFile) {
 
     for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
         auto netid = pin_node[id(x, y, z)];
-        auto start = varsN[id(x, y, z)];
-        if (netid == -1) {
-            auto ne = nearedge(x, y, z, 0);
-            auto size = ne.size();
-            // std::cerr _ "non-pin node" _ x _ y _ z _ ":"; for (auto k: nei) std::cerr _ k; std::cerr _ std::endl;
-            // not choose 3
-            for (int nid = 0; nid < num_nets; nid++) {
-                for (auto&& ids: comb_id(size, 3)) {
-                    Clause c;
-                    for (auto i: ids) {
-                        auto k = ne[i] + nid;
-                        c.emplace_back(-k);
-                    }
-                    add_clause(c);
-                }
-            }
-            // not choose 1
-            for (int nid = 0; nid < num_nets; nid++) {
-                for (size_t i = 0; i < size; i++) {
-                    Clause c;
-                    for (size_t j = 0; j < size; j++) {
-                        auto k = ne[j] + nid;
-                        if (i == j)
-                            c.emplace_back(-k);
-                        else
-                            c.emplace_back(k);
-                    }
-                    add_clause(c);
-                }
-            }
-            // used node
-            Clause c;
-            c.vars.reserve(1 + size * (size_t)num_nets);
-            c.emplace_back(-(start + m));
-            for (int nid = 0; nid < num_nets; nid++)
-                for (auto n: ne)
-                    c.emplace_back(n + nid);
-            add_clause(c);
-        } else {
+        if (netid != -1) {
+            auto start = varsN[id(x, y, z)];
             auto ne = nearedge(x, y, z, netid);
-            auto size = ne.size();
-            // std::cerr _ "pin node" _ x _ y _ z _ ":"; for (auto k: nei) std::cerr _ k; std::cerr _ std::endl;
             // select 1 edge
             add_clause(ne);
-            // not select 2+ edge
-            for (auto&& ids: comb_id(size, 2)) {
-                Clause c;
-                for (auto i: ids)
-                    c.emplace_back(-ne[i]);
-                add_clause(c);
-            }
             // set node used by netid
             for (int b = 0; b < m; b++) {
                 auto id = start + b;
@@ -238,21 +191,20 @@ void Router::generateClauses(std::ofstream& outputFile) {
         }
     }
 
-    // std::cerr _ "edge" _ std::endl;
-    for (size_t d = 0; d < 3; d++) {
-        auto isX = d==DIR::X, isY = d==DIR::Y, isZ = d==DIR::Z;
-        for (int x = 0; x+isX < num_x; x++)
-        for (int y = 0; y+isY < num_y; y++)
-        for (int z = 0; z+isZ < num_z; z++) {
-            auto e = varsE[id(x, y, z)][d];
-            for (auto&& ids: comb_id((size_t)num_nets, 2)) {
-                Clause c;
-                for (auto i: ids) {
-                    auto k = e + (int)i;
-                    c.emplace_back(-k);
-                }
-                add_clause(c);
-            }
+    for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
+        auto netid = pin_node[id(x, y, z)];
+        if (netid == -1) {
+            auto start = varsN[id(x, y, z)];
+            auto ne = nearedge(x, y, z, 0);
+            auto size = ne.size();
+            // used node
+            Clause c;
+            c.vars.reserve(1 + size * (size_t)num_nets);
+            c.emplace_back(-(start + m));
+            for (int nid = 0; nid < num_nets; nid++)
+                for (auto n: ne)
+                    c.emplace_back(n + nid);
+            add_clause(c);
         }
     }
 
@@ -280,15 +232,78 @@ void Router::generateClauses(std::ofstream& outputFile) {
         }
     }
 
+    // std::cerr _ "edge" _ std::endl;
+    for (size_t d = 0; d < 3; d++) {
+        auto isX = d==DIR::X, isY = d==DIR::Y, isZ = d==DIR::Z;
+        for (int x = 0; x+isX < num_x; x++)
+        for (int y = 0; y+isY < num_y; y++)
+        for (int z = 0; z+isZ < num_z; z++) {
+            auto e = varsE[id(x, y, z)][d];
+            for (auto&& ids: comb_id((size_t)num_nets, 2)) {
+                Clause c;
+                for (auto i: ids) {
+                    auto k = e + (int)i;
+                    c.emplace_back(-k);
+                }
+                add_clause(c);
+            }
+        }
+    }
+
+    for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
+        auto netid = pin_node[id(x, y, z)];
+        if (netid != -1) {
+            auto ne = nearedge(x, y, z, netid);
+            auto size = ne.size();
+            // not select 2+ edge
+            for (auto&& ids: comb_id(size, 2)) {
+                Clause c;
+                for (auto i: ids)
+                    c.emplace_back(-ne[i]);
+                add_clause(c);
+            }
+        }
+    }
+
+    for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
+        auto netid = pin_node[id(x, y, z)];
+        if (netid == -1) {
+            auto ne = nearedge(x, y, z, 0);
+            auto size = ne.size();
+            // not choose 3
+            for (int nid = 0; nid < num_nets; nid++) {
+                for (auto&& ids: comb_id(size, 3)) {
+                    Clause c;
+                    for (auto i: ids) {
+                        auto k = ne[i] + nid;
+                        c.emplace_back(-k);
+                    }
+                    add_clause(c);
+                }
+            }
+            // not choose 1
+            for (int nid = 0; nid < num_nets; nid++) {
+                for (size_t i = 0; i < size; i++) {
+                    Clause c;
+                    for (size_t j = 0; j < size; j++) {
+                        auto k = ne[j] + nid;
+                        if (i == j)
+                            c.emplace_back(-k);
+                        else
+                            c.emplace_back(k);
+                    }
+                    add_clause(c);
+                }
+            }
+        }
+    }
+
     weight = 1;
     for (auto &c: clauses)
         weight += c.weight;
     for (auto &c: clauses)
         if (!c.weight)
             c.weight = weight;
-    
-    std::mt19937 rng(0);
-    std::shuffle(ALL(clauses), rng);
 
     std::cout << "p wcnf" _ variables-1 _ clauses.size() _ weight << std::endl;
     outputFile << "p wcnf" _ variables-1 _ clauses.size() _ weight << '\n';
