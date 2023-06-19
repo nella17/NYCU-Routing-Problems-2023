@@ -174,129 +174,158 @@ void Router::generateClauses(std::ofstream& outputFile) {
         clauses.emplace_back(c);
     };
 
-    for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
-        auto netid = pin_node[id(x, y, z)];
-        if (netid != -1) {
-            auto start = varsN[id(x, y, z)];
-            auto ne = nearedge(x, y, z, netid);
-            // select 1 edge
-            add_clause(ne);
-            // set node used by netid
-            for (int b = 0; b < m; b++) {
-                auto id = start + b;
-                auto r = (netid & (1 << b)) ? 1 : -1;
-                add_clause({ id * r });
-            }
-            add_clause({ start + m });
-        }
-    }
-
-    for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
-        auto netid = pin_node[id(x, y, z)];
-        if (netid == -1) {
-            auto start = varsN[id(x, y, z)];
-            auto ne = nearedge(x, y, z, 0);
-            auto size = ne.size();
-            // used node
-            Clause c;
-            c.vars.reserve(1 + size * (size_t)num_nets);
-            c.emplace_back(-(start + m));
-            for (int nid = 0; nid < num_nets; nid++)
-                for (auto n: ne)
-                    c.emplace_back(n + nid);
-            add_clause(c);
-        }
-    }
-
-    for (size_t d = 0; d < 3; d++) {
-        auto isX = d==DIR::X, isY = d==DIR::Y, isZ = d==DIR::Z;
-        for (int x = 0; x+isX < num_x; x++)
-        for (int y = 0; y+isY < num_y; y++)
-        for (int z = 0; z+isZ < num_z; z++) {
-            auto e = varsE[id(x, y, z)][d];
-            auto n1 = varsN[id(x, y, z)];
-            auto n2 = varsN[id(x+isX, y+isY, z+isZ)];
-            // E{1-n} -> Nm
-            // = (E{1-n}' or Nm)
-            // = (&(Ei') or Nm)
-            for (int netid = 0; netid < num_nets; netid++) {
-                auto k = e + netid;
-                add_clause({ -k, n1 + m });
-                add_clause({ -k, n2 + m });
+    auto gen_pin_node_sel_1_edge = [&]() {
+        for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
+            auto netid = pin_node[id(x, y, z)];
+            if (netid != -1) {
+                auto start = varsN[id(x, y, z)];
+                auto ne = nearedge(x, y, z, netid);
+                // select 1 edge
+                add_clause(ne);
+                // set node used by netid
                 for (int b = 0; b < m; b++) {
+                    auto id = start + b;
                     auto r = (netid & (1 << b)) ? 1 : -1;
-                    add_clause({ -k, r * (b + n1) });
-                    add_clause({ -k, r * (b + n2) });
+                    add_clause({ id * r });
+                }
+                add_clause({ start + m });
+            }
+        }
+    };
+
+    auto gen_pin_node_not_sel_2_edge = [&]() {
+        for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
+            auto netid = pin_node[id(x, y, z)];
+            if (netid != -1) {
+                auto ne = nearedge(x, y, z, netid);
+                auto size = ne.size();
+                // not select 2+ edge
+                for (auto&& ids: comb_id(size, 2)) {
+                    Clause c;
+                    for (auto i: ids)
+                        c.emplace_back(-ne[i]);
+                    add_clause(c);
                 }
             }
         }
-    }
+    };
 
-    // std::cerr _ "edge" _ std::endl;
-    for (size_t d = 0; d < 3; d++) {
-        auto isX = d==DIR::X, isY = d==DIR::Y, isZ = d==DIR::Z;
-        for (int x = 0; x+isX < num_x; x++)
-        for (int y = 0; y+isY < num_y; y++)
-        for (int z = 0; z+isZ < num_z; z++) {
-            auto e = varsE[id(x, y, z)][d];
-            for (auto&& ids: comb_id((size_t)num_nets, 2)) {
-                Clause c;
-                for (auto i: ids) {
-                    auto k = e + (int)i;
-                    c.emplace_back(-k);
+    auto gen_non_pin_node_not_sel_1_edge = [&]() {
+        for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
+            auto netid = pin_node[id(x, y, z)];
+            if (netid == -1) {
+                auto ne = nearedge(x, y, z, 0);
+                auto size = ne.size();
+                // not choose 1
+                for (int nid = 0; nid < num_nets; nid++) {
+                    for (size_t i = 0; i < size; i++) {
+                        Clause c;
+                        for (size_t j = 0; j < size; j++) {
+                            auto k = ne[j] + nid;
+                            if (i == j)
+                                c.emplace_back(-k);
+                            else
+                                c.emplace_back(k);
+                        }
+                        add_clause(c);
+                    }
                 }
-                add_clause(c);
             }
         }
-    }
+    };
 
-    for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
-        auto netid = pin_node[id(x, y, z)];
-        if (netid != -1) {
-            auto ne = nearedge(x, y, z, netid);
-            auto size = ne.size();
-            // not select 2+ edge
-            for (auto&& ids: comb_id(size, 2)) {
+    auto gen_non_pin_node_not_sel_3_edge = [&]() {
+        for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
+            auto netid = pin_node[id(x, y, z)];
+            if (netid == -1) {
+                auto ne = nearedge(x, y, z, 0);
+                auto size = ne.size();
+                // not choose 3
+                for (int nid = 0; nid < num_nets; nid++) {
+                    for (auto&& ids: comb_id(size, 3)) {
+                        Clause c;
+                        for (auto i: ids) {
+                            auto k = ne[i] + nid;
+                            c.emplace_back(-k);
+                        }
+                        add_clause(c);
+                    }
+                }
+            }
+        }
+    };
+
+    auto gen_node_used_bit = [&]() {
+        for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
+            auto netid = pin_node[id(x, y, z)];
+            if (netid == -1) {
+                auto start = varsN[id(x, y, z)];
+                auto ne = nearedge(x, y, z, 0);
+                auto size = ne.size();
+                // used node
                 Clause c;
-                for (auto i: ids)
-                    c.emplace_back(-ne[i]);
+                c.vars.reserve(1 + size * (size_t)num_nets);
+                c.emplace_back(-(start + m));
+                for (int nid = 0; nid < num_nets; nid++)
+                    for (auto n: ne)
+                        c.emplace_back(n + nid);
                 add_clause(c);
             }
         }
-    }
+    };
 
-    for (int x = 0; x < num_x; x++) for (int y = 0; y < num_y; y++) for (int z = 0; z < num_z; z++) {
-        auto netid = pin_node[id(x, y, z)];
-        if (netid == -1) {
-            auto ne = nearedge(x, y, z, 0);
-            auto size = ne.size();
-            // not choose 3
-            for (int nid = 0; nid < num_nets; nid++) {
-                for (auto&& ids: comb_id(size, 3)) {
+    auto gen_edge_use_node_bit = [&]() {
+        for (size_t d = 0; d < 3; d++) {
+            auto isX = d==DIR::X, isY = d==DIR::Y, isZ = d==DIR::Z;
+            for (int x = 0; x+isX < num_x; x++)
+            for (int y = 0; y+isY < num_y; y++)
+            for (int z = 0; z+isZ < num_z; z++) {
+                auto e = varsE[id(x, y, z)][d];
+                auto n1 = varsN[id(x, y, z)];
+                auto n2 = varsN[id(x+isX, y+isY, z+isZ)];
+                // E{1-n} -> Nm
+                // = (E{1-n}' or Nm)
+                // = (&(Ei') or Nm)
+                for (int netid = 0; netid < num_nets; netid++) {
+                    auto k = e + netid;
+                    add_clause({ -k, n1 + m });
+                    add_clause({ -k, n2 + m });
+                    for (int b = 0; b < m; b++) {
+                        auto r = (netid & (1 << b)) ? 1 : -1;
+                        add_clause({ -k, r * (b + n1) });
+                        add_clause({ -k, r * (b + n2) });
+                    }
+                }
+            }
+        }
+    };
+
+    auto gen_edge_only_1_bit = [&]() {
+        for (size_t d = 0; d < 3; d++) {
+            auto isX = d==DIR::X, isY = d==DIR::Y, isZ = d==DIR::Z;
+            for (int x = 0; x+isX < num_x; x++)
+            for (int y = 0; y+isY < num_y; y++)
+            for (int z = 0; z+isZ < num_z; z++) {
+                auto e = varsE[id(x, y, z)][d];
+                for (auto&& ids: comb_id((size_t)num_nets, 2)) {
                     Clause c;
                     for (auto i: ids) {
-                        auto k = ne[i] + nid;
+                        auto k = e + (int)i;
                         c.emplace_back(-k);
                     }
                     add_clause(c);
                 }
             }
-            // not choose 1
-            for (int nid = 0; nid < num_nets; nid++) {
-                for (size_t i = 0; i < size; i++) {
-                    Clause c;
-                    for (size_t j = 0; j < size; j++) {
-                        auto k = ne[j] + nid;
-                        if (i == j)
-                            c.emplace_back(-k);
-                        else
-                            c.emplace_back(k);
-                    }
-                    add_clause(c);
-                }
-            }
         }
-    }
+    };
+
+    gen_node_used_bit();
+    gen_edge_use_node_bit();
+    gen_pin_node_sel_1_edge();
+    gen_edge_only_1_bit();
+    gen_non_pin_node_not_sel_3_edge();
+    gen_pin_node_not_sel_2_edge();
+    gen_non_pin_node_not_sel_1_edge();
 
     weight = 1;
     for (auto &c: clauses)
