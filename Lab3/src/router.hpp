@@ -22,6 +22,7 @@ public:
         int id;
         std::string name;
         Point s, t;
+        long cost;
         std::vector<Point> path;
     };
 
@@ -58,6 +59,11 @@ private:
     std::vector<int> nearedge(int, int, int, int = 0);
     std::vector<int> nearedge(Point, int = 0);
     std::vector<Point> neighbor(Point);
+
+    long cost(const Net&);
+    void ripup(const Net&);
+    void place(const Net&);
+    void newpath(Net&);
 
 public:
     Router();
