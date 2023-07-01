@@ -23,7 +23,7 @@ def color(demand: int, capacity: int, via: int):
         if alpha < 1:
             color = [255 * (1 - alpha), 255 * alpha, 0, 100]
         elif demand <= capacity:
-            color = [255 * (2 - alpha), 255 * (alpha - 1), 0, 200]
+            color = [0, 255 * (2 - alpha), 255 * (alpha - 1), 200]
         else:
             color = [0, 0, 255, 255]
     else:

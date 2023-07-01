@@ -1,10 +1,13 @@
 #include <stdio.h>
+#include <algorithm>
+#include <numeric>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include "src/ispdData.h"
 #include "src/grid-graph.hpp"
-#include "src/utils.hpp"
+#define _ <<' ' <<
+#define ALL(v) v.begin(),v.end()
 
 struct Edge {
     int cap, demand, via;
